@@ -2744,3 +2744,1733 @@ async def get_portfolio_allocation(session_id: str) -> dict:
             "error": str(e),
             "display_type": "text"
         }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# COMPLIANCE OFFICER — Portfolio compliance checking
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@mcp.tool()
+async def check_compliance(
+    session_id: str,
+    max_single_position_pct: float = 20.0,
+    max_asset_class_pct: float = 70.0,
+    max_currency_pct: float = 80.0,
+    min_positions_count: int = 5,
+    min_cash_pct: float = 0.0,
+    max_cash_pct: float = 25.0,
+) -> dict:
+    """
+    Check portfolio compliance against concentration and diversification rules.
+
+    Validates portfolio against configurable limits:
+    - Position concentration: No single position exceeds max_single_position_pct
+    - Asset class concentration: No asset class exceeds max_asset_class_pct
+    - Currency concentration: No currency exceeds max_currency_pct
+    - Minimum diversification: At least min_positions_count positions
+    - Cash allocation: Between min_cash_pct and max_cash_pct
+
+    Returns detailed compliance report with:
+    - All violations (critical, high, medium, low severity)
+    - Affected positions for each violation
+    - Specific recommendations for remediation
+    - Overall compliance status (pass/fail)
+
+    Args:
+        session_id: Portfolio session identifier
+        max_single_position_pct: Maximum % in a single position (default 20%)
+        max_asset_class_pct: Maximum % in a single asset class (default 70%)
+        max_currency_pct: Maximum % in a single currency (default 80%)
+        min_positions_count: Minimum number of positions (default 5)
+        min_cash_pct: Minimum cash allocation % (default 0%)
+        max_cash_pct: Maximum cash allocation % (default 25%)
+
+    Returns:
+        Compliance report with violations, recommendations, and compliance status
+
+    Example prompts:
+        - "Check compliance of my portfolio"
+        - "Am I too concentrated in any position?"
+        - "Does my portfolio meet diversification requirements?"
+        - "Review compliance with 15% single position limit"
+    """
+    logger.info(f"[{session_id}] Checking portfolio compliance...")
+
+    try:
+        # Load portfolio
+        with get_session() as db_session:
+            portfolio = db_session.get(Portfolio, session_id)
+            if not portfolio:
+                return {
+                    "success": False,
+                    "error": f"Portfolio {session_id} not found.",
+                    "display_type": "text"
+                }
+
+            from app.models.portfolio import PortfolioData
+            portfolio_data = PortfolioData.model_validate_json(portfolio.data_json)
+
+        # Create compliance checker with config
+        from app.analysis.compliance_checker import ComplianceChecker
+        from app.models.analysis import ComplianceConfig
+
+        config = ComplianceConfig(
+            max_single_position_pct=max_single_position_pct,
+            max_asset_class_pct=max_asset_class_pct,
+            max_currency_pct=max_currency_pct,
+            min_positions_count=min_positions_count,
+            min_cash_pct=min_cash_pct,
+            max_cash_pct=max_cash_pct,
+        )
+
+        checker = ComplianceChecker()
+        result = checker.check_compliance(portfolio_data, config)
+
+        logger.info(
+            f"[{session_id}] Compliance check complete: "
+            f"{result.critical_count} critical, {result.high_count} high, "
+            f"{result.medium_count} medium, {result.low_count} low violations"
+        )
+
+        # Format violations for display
+        violations_by_severity = {
+            "critical": [],
+            "high": [],
+            "medium": [],
+            "low": []
+        }
+
+        for violation in result.violations:
+            violations_by_severity[violation.severity].append({
+                "rule_id": violation.rule_id,
+                "rule_name": violation.rule_name,
+                "message": violation.message,
+                "current": f"{violation.current_value:.1f}%",
+                "limit": f"{violation.limit_value:.1f}%",
+                "affected_positions": violation.affected_positions[:5],  # Limit to 5
+                "recommendation": violation.recommendation,
+            })
+
+        # Determine display type based on violations
+        if result.is_compliant:
+            display_type = "kpi_cards"  # Clean compliance = simple KPI cards
+        else:
+            display_type = "mixed"  # Violations = detailed table + KPIs
+
+        # Build KPI cards
+        kpis = [
+            {
+                "label": "Compliance Status",
+                "value": "✅ COMPLIANT" if result.is_compliant else "⚠️ NON-COMPLIANT",
+                "change_type": "positive" if result.is_compliant else "negative",
+                "icon": "shield"
+            },
+            {
+                "label": "Total Violations",
+                "value": str(len(result.violations)),
+                "change": f"Critical: {result.critical_count}, High: {result.high_count}",
+                "change_type": "negative" if result.critical_count > 0 else "neutral",
+                "icon": "alert-triangle"
+            },
+            {
+                "label": "Portfolio Positions",
+                "value": str(result.total_positions),
+                "change": f"Min required: {config.min_positions_count}",
+                "change_type": "positive" if result.total_positions >= config.min_positions_count else "negative",
+                "icon": "list"
+            },
+            {
+                "label": "Portfolio Value",
+                "value": f"CHF {result.portfolio_value_chf:,.2f}",
+                "icon": "wallet"
+            }
+        ]
+
+        # Build violations table if there are violations
+        tables = []
+        if result.violations:
+            # Critical and high violations table
+            priority_violations = [
+                v for v in result.violations
+                if v.severity in ["critical", "high"]
+            ]
+
+            if priority_violations:
+                tables.append({
+                    "title": "🔴 Priority Violations (Immediate Action Required)",
+                    "columns": [
+                        {"key": "severity", "label": "Severity", "type": "text"},
+                        {"key": "rule", "label": "Rule", "type": "text"},
+                        {"key": "issue", "label": "Issue", "type": "text"},
+                        {"key": "current", "label": "Current", "type": "text"},
+                        {"key": "limit", "label": "Limit", "type": "text"},
+                        {"key": "recommendation", "label": "Action", "type": "text"},
+                    ],
+                    "rows": [
+                        {
+                            "severity": v.severity.upper(),
+                            "rule": v.rule_id,
+                            "issue": v.rule_name,
+                            "current": f"{v.current_value:.1f}%",
+                            "limit": f"{v.limit_value:.1f}%",
+                            "recommendation": v.recommendation,
+                        }
+                        for v in priority_violations
+                    ],
+                    "sortable": True
+                })
+
+            # Medium and low violations table
+            warning_violations = [
+                v for v in result.violations
+                if v.severity in ["medium", "low"]
+            ]
+
+            if warning_violations:
+                tables.append({
+                    "title": "⚠️ Warnings (Monitor and Address)",
+                    "columns": [
+                        {"key": "severity", "label": "Severity", "type": "text"},
+                        {"key": "rule", "label": "Rule", "type": "text"},
+                        {"key": "issue", "label": "Issue", "type": "text"},
+                        {"key": "recommendation", "label": "Action", "type": "text"},
+                    ],
+                    "rows": [
+                        {
+                            "severity": v.severity.upper(),
+                            "rule": v.rule_id,
+                            "issue": v.rule_name,
+                            "recommendation": v.recommendation,
+                        }
+                        for v in warning_violations
+                    ],
+                    "sortable": True
+                })
+
+        # Build response
+        return {
+            "success": True,
+            "session_id": session_id,
+            "display_type": display_type,
+            "content": result.summary,
+            "kpis": kpis,
+            "tables": tables,
+            "compliance": {
+                "is_compliant": result.is_compliant,
+                "timestamp": result.timestamp,
+                "portfolio_value_chf": result.portfolio_value_chf,
+                "total_positions": result.total_positions,
+                "violations": {
+                    "critical": violations_by_severity["critical"],
+                    "high": violations_by_severity["high"],
+                    "medium": violations_by_severity["medium"],
+                    "low": violations_by_severity["low"],
+                },
+                "counts": {
+                    "critical": result.critical_count,
+                    "high": result.high_count,
+                    "medium": result.medium_count,
+                    "low": result.low_count,
+                    "total": len(result.violations),
+                },
+                "summary": result.summary,
+                "recommendations": result.recommendations,
+                "config_used": {
+                    "max_single_position_pct": config.max_single_position_pct,
+                    "max_asset_class_pct": config.max_asset_class_pct,
+                    "max_currency_pct": config.max_currency_pct,
+                    "min_positions_count": config.min_positions_count,
+                    "min_cash_pct": config.min_cash_pct,
+                    "max_cash_pct": config.max_cash_pct,
+                }
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"[{session_id}] Error checking compliance: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error": str(e),
+            "display_type": "text"
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# DIVIDEND SPECIALIST — Dividend yield and income analysis
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@mcp.tool()
+async def analyze_dividends(
+    session_id: str,
+) -> dict:
+    """
+    Analyze dividend income potential for all equity and ETF positions.
+
+    Fetches dividend data from yfinance and calculates:
+    - Portfolio dividend yield (weighted average)
+    - Annual dividend income (projected)
+    - Dividend yield by position
+    - Dividend payout history (trailing 12 months)
+    - Top dividend contributors
+    - Dividend growth trends (if available)
+
+    Returns:
+    - Portfolio-level dividend KPIs
+    - Table of dividend-paying positions with yields
+    - Annual income projection
+    - Recommendations for income optimization
+
+    Args:
+        session_id: Portfolio session identifier
+
+    Returns:
+        Dividend analysis with yields, income projections, and recommendations
+
+    Example prompts:
+        - "Analyze dividend income from my portfolio"
+        - "What's my portfolio dividend yield?"
+        - "How much dividend income will I receive?"
+        - "Which positions pay the most dividends?"
+    """
+    logger.info(f"[{session_id}] Analyzing dividend income...")
+
+    try:
+        # Load portfolio
+        with get_session() as db_session:
+            portfolio = db_session.get(Portfolio, session_id)
+            if not portfolio:
+                return {
+                    "success": False,
+                    "error": f"Portfolio {session_id} not found.",
+                    "display_type": "text"
+                }
+
+            from app.models.portfolio import PortfolioData
+            portfolio_data = PortfolioData.model_validate_json(portfolio.data_json)
+
+        import yfinance as yf
+
+        # Filter positions that can pay dividends (equities, ETFs with tickers)
+        dividend_eligible = [
+            pos for pos in portfolio_data.positions
+            if pos.ticker and pos.is_listed and pos.asset_class == "Equities"
+        ]
+
+        if not dividend_eligible:
+            return {
+                "success": True,
+                "session_id": session_id,
+                "display_type": "text",
+                "content": (
+                    "⚠️ No dividend-eligible positions found in portfolio. "
+                    "Dividend analysis requires listed equity or ETF positions with tickers."
+                ),
+            }
+
+        logger.info(f"[{session_id}] Found {len(dividend_eligible)} dividend-eligible positions")
+
+        # Fetch dividend data for each position
+        dividend_positions = []
+        total_annual_dividends_chf = 0.0
+        total_dividend_weight = 0.0
+
+        for pos in dividend_eligible:
+            try:
+                ticker_obj = yf.Ticker(pos.ticker)
+                info = ticker_obj.info
+
+                # Get dividend data
+                trailing_annual_dividend = info.get("trailingAnnualDividendRate", 0.0)  # Per share
+
+                # Calculate dividend yield correctly using actual share price
+                # Don't trust yfinance's dividendYield as it can be in wrong currency
+                if trailing_annual_dividend > 0 and pos.quote and pos.quote > 0:
+                    # Yield = annual dividend per share / current share price
+                    dividend_yield = trailing_annual_dividend / pos.quote
+                else:
+                    dividend_yield = 0.0
+
+                # Calculate annual dividends for this position
+                if trailing_annual_dividend > 0 and pos.quantity:
+                    position_annual_dividends = trailing_annual_dividend * pos.quantity
+                    # Convert to CHF if needed (simplified - assumes current quote is in same currency)
+                    position_annual_dividends_chf = position_annual_dividends * (pos.fx_rate or 1.0)
+                else:
+                    position_annual_dividends_chf = 0.0
+
+                # Get dividend date
+                ex_dividend_date = info.get("exDividendDate", None)
+                if ex_dividend_date:
+                    from datetime import datetime
+                    ex_dividend_date = datetime.fromtimestamp(ex_dividend_date).strftime("%Y-%m-%d")
+
+                dividend_positions.append({
+                    "name": pos.name,
+                    "ticker": pos.ticker,
+                    "value_chf": pos.value_chf,
+                    "weight_pct": pos.weight_pct,
+                    "dividend_yield_pct": dividend_yield * 100 if dividend_yield else 0.0,
+                    "annual_dividend_per_share": trailing_annual_dividend,
+                    "shares": pos.quantity or 0,
+                    "annual_dividends_chf": position_annual_dividends_chf,
+                    "ex_dividend_date": ex_dividend_date or "N/A",
+                    "currency": pos.currency,
+                })
+
+                total_annual_dividends_chf += position_annual_dividends_chf
+                if dividend_yield > 0:
+                    total_dividend_weight += pos.weight_pct
+
+            except Exception as e:
+                logger.warning(f"[{session_id}] Failed to fetch dividend data for {pos.ticker}: {e}")
+                dividend_positions.append({
+                    "name": pos.name,
+                    "ticker": pos.ticker,
+                    "value_chf": pos.value_chf,
+                    "weight_pct": pos.weight_pct,
+                    "dividend_yield_pct": 0.0,
+                    "annual_dividend_per_share": 0.0,
+                    "shares": pos.quantity or 0,
+                    "annual_dividends_chf": 0.0,
+                    "ex_dividend_date": "N/A",
+                    "currency": pos.currency,
+                })
+
+        # Sort by annual dividends (descending)
+        dividend_positions.sort(key=lambda x: x["annual_dividends_chf"], reverse=True)
+
+        # Calculate portfolio dividend yield
+        paying_positions = [p for p in dividend_positions if p["dividend_yield_pct"] > 0]
+        if paying_positions:
+            # Weighted average yield (by position value)
+            total_paying_value = sum(p["value_chf"] for p in paying_positions)
+            portfolio_yield = sum(
+                p["dividend_yield_pct"] * p["value_chf"] / total_paying_value
+                for p in paying_positions
+            )
+        else:
+            portfolio_yield = 0.0
+
+        # Generate summary
+        if total_annual_dividends_chf > 0:
+            summary = (
+                f"📊 Portfolio dividend yield: {portfolio_yield:.2f}% (weighted average)\n"
+                f"💰 Projected annual dividend income: CHF {total_annual_dividends_chf:,.2f}\n"
+                f"📈 {len(paying_positions)}/{len(dividend_positions)} positions pay dividends"
+            )
+        else:
+            summary = (
+                f"⚠️ No dividend income detected from {len(dividend_positions)} eligible positions. "
+                f"Positions may not pay dividends or data is unavailable."
+            )
+
+        # Build KPI cards
+        kpis = [
+            {
+                "label": "Portfolio Dividend Yield",
+                "value": f"{portfolio_yield:.2f}%",
+                "change": f"{len(paying_positions)} paying positions",
+                "change_type": "positive" if portfolio_yield > 2.0 else "neutral",
+                "icon": "trending-up"
+            },
+            {
+                "label": "Annual Dividend Income",
+                "value": f"CHF {total_annual_dividends_chf:,.0f}",
+                "change": f"From {len(paying_positions)} positions",
+                "change_type": "positive" if total_annual_dividends_chf > 0 else "neutral",
+                "icon": "wallet"
+            },
+            {
+                "label": "Dividend-Eligible Positions",
+                "value": str(len(dividend_positions)),
+                "change": f"{len(paying_positions)} currently paying",
+                "change_type": "positive" if len(paying_positions) > 0 else "neutral",
+                "icon": "list"
+            }
+        ]
+
+        # Build dividend positions table
+        tables = [{
+            "title": "💰 Dividend-Paying Positions",
+            "columns": [
+                {"key": "name", "label": "Position", "type": "text"},
+                {"key": "ticker", "label": "Ticker", "type": "text"},
+                {"key": "value_chf", "label": "Value (CHF)", "type": "currency"},
+                {"key": "weight_pct", "label": "Weight %", "type": "percent"},
+                {"key": "dividend_yield_pct", "label": "Div Yield %", "type": "percent"},
+                {"key": "annual_dividends_chf", "label": "Annual Div (CHF)", "type": "currency"},
+                {"key": "ex_dividend_date", "label": "Ex-Div Date", "type": "date"},
+            ],
+            "rows": dividend_positions,
+            "sortable": True
+        }]
+
+        # Generate recommendations
+        recommendations = []
+
+        if portfolio_yield < 2.0 and len(paying_positions) > 0:
+            recommendations.append(
+                "💡 Portfolio dividend yield is below 2%. Consider increasing allocation to "
+                "dividend-paying stocks or dividend ETFs for income generation."
+            )
+
+        if len(paying_positions) < len(dividend_positions) / 2:
+            recommendations.append(
+                f"💡 Only {len(paying_positions)}/{len(dividend_positions)} eligible positions "
+                f"pay dividends. Consider replacing non-dividend growth stocks with dividend "
+                f"aristocrats for income."
+            )
+
+        if len(paying_positions) > 0:
+            top_3_contributors = dividend_positions[:3]
+            top_3_income = sum(p["annual_dividends_chf"] for p in top_3_contributors)
+            concentration = (top_3_income / total_annual_dividends_chf * 100) if total_annual_dividends_chf > 0 else 0
+            if concentration > 70:
+                recommendations.append(
+                    f"⚠️ Top 3 dividend contributors represent {concentration:.0f}% of income. "
+                    f"Consider diversifying dividend sources across more positions."
+                )
+
+        if portfolio_yield > 6.0:
+            recommendations.append(
+                "⚠️ Portfolio dividend yield exceeds 6%. High yields can indicate dividend "
+                "sustainability risk. Review payout ratios and company fundamentals."
+            )
+
+        if not recommendations:
+            recommendations.append(
+                "✅ Dividend income strategy appears balanced. Continue monitoring dividend "
+                "sustainability and payout ratios quarterly."
+            )
+
+        return {
+            "success": True,
+            "session_id": session_id,
+            "display_type": "mixed",
+            "content": summary,
+            "kpis": kpis,
+            "tables": tables,
+            "dividends": {
+                "portfolio_yield_pct": portfolio_yield,
+                "annual_income_chf": total_annual_dividends_chf,
+                "paying_positions_count": len(paying_positions),
+                "eligible_positions_count": len(dividend_positions),
+                "top_contributors": [
+                    {
+                        "name": p["name"],
+                        "ticker": p["ticker"],
+                        "annual_dividends_chf": p["annual_dividends_chf"],
+                        "contribution_pct": (
+                            p["annual_dividends_chf"] / total_annual_dividends_chf * 100
+                            if total_annual_dividends_chf > 0 else 0
+                        )
+                    }
+                    for p in dividend_positions[:5]
+                ],
+                "recommendations": recommendations
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"[{session_id}] Error analyzing dividends: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error": str(e),
+            "display_type": "text"
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# MARGIN SPECIALIST — Margin utilization and leverage analysis
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@mcp.tool()
+async def analyze_margin(
+    session_id: str,
+    margin_interest_rate: float = 5.0,
+) -> dict:
+    """
+    Analyze margin utilization, leverage, and interest costs.
+
+    Note: This is a simplified margin analysis. For real margin accounts,
+    additional data from the broker is required (margin balance, maintenance
+    requirements, borrowing rates, etc.).
+
+    This tool provides:
+    - Estimated leverage ratio (if portfolio has debt positions)
+    - Projected margin interest costs
+    - Leverage risk warnings
+    - Recommendations for margin management
+
+    Args:
+        session_id: Portfolio session identifier
+        margin_interest_rate: Annual margin interest rate % (default 5.0%)
+
+    Returns:
+        Margin analysis with leverage metrics and interest cost projections
+
+    Example prompts:
+        - "Analyze margin in my portfolio"
+        - "What's my leverage ratio?"
+        - "Calculate margin interest costs"
+        - "Am I over-leveraged?"
+    """
+    logger.info(f"[{session_id}] Analyzing margin utilization...")
+
+    try:
+        # Load portfolio
+        with get_session() as db_session:
+            portfolio = db_session.get(Portfolio, session_id)
+            if not portfolio:
+                return {
+                    "success": False,
+                    "error": f"Portfolio {session_id} not found.",
+                    "display_type": "text"
+                }
+
+            from app.models.portfolio import PortfolioData
+            portfolio_data = PortfolioData.model_validate_json(portfolio.data_json)
+
+        # Simplified margin analysis
+        # In a real implementation, we would need:
+        # - Actual margin balance from broker
+        # - Maintenance margin requirements
+        # - Borrowing power
+        # - Margin call thresholds
+
+        # For now, we provide a framework for future enhancement
+        total_value = portfolio_data.total_value_chf
+        cash_positions = [p for p in portfolio_data.positions if p.asset_class == "Cash"]
+        total_cash = sum(p.value_chf for p in cash_positions)
+
+        # Estimate net portfolio value (simplified - assume no margin debt if all cash positive)
+        if total_cash < 0:
+            margin_debt = abs(total_cash)
+            net_value = total_value - margin_debt
+            leverage_ratio = total_value / net_value if net_value > 0 else 0
+            is_leveraged = True
+        else:
+            margin_debt = 0.0
+            net_value = total_value
+            leverage_ratio = 1.0
+            is_leveraged = False
+
+        # Calculate annual interest cost
+        annual_interest = margin_debt * (margin_interest_rate / 100)
+        monthly_interest = annual_interest / 12
+
+        # Generate summary
+        if is_leveraged:
+            summary = (
+                f"⚠️ Portfolio appears to have margin debt of CHF {margin_debt:,.2f}\n"
+                f"🎯 Leverage ratio: {leverage_ratio:.2f}x\n"
+                f"💸 Estimated annual interest cost: CHF {annual_interest:,.2f} "
+                f"(CHF {monthly_interest:,.2f}/month at {margin_interest_rate:.1f}%)"
+            )
+        else:
+            summary = (
+                f"✅ No margin debt detected. Portfolio is unleveraged.\n"
+                f"💰 Available cash: CHF {total_cash:,.2f}\n"
+                f"📊 Leverage ratio: 1.0x (no leverage)"
+            )
+
+        # Build KPI cards
+        kpis = [
+            {
+                "label": "Leverage Ratio",
+                "value": f"{leverage_ratio:.2f}x",
+                "change": "Unleveraged" if leverage_ratio == 1.0 else f"Debt: CHF {margin_debt:,.0f}",
+                "change_type": "positive" if leverage_ratio <= 1.5 else "negative",
+                "icon": "trending-up" if leverage_ratio > 1.0 else "shield"
+            },
+            {
+                "label": "Margin Debt",
+                "value": f"CHF {margin_debt:,.0f}",
+                "change": f"Interest: {margin_interest_rate:.1f}%/year",
+                "change_type": "negative" if margin_debt > 0 else "positive",
+                "icon": "alert-triangle" if margin_debt > 0 else "check-circle"
+            },
+            {
+                "label": "Annual Interest Cost",
+                "value": f"CHF {annual_interest:,.0f}",
+                "change": f"CHF {monthly_interest:,.0f}/month",
+                "change_type": "negative" if annual_interest > 0 else "neutral",
+                "icon": "dollar-sign"
+            },
+            {
+                "label": "Net Portfolio Value",
+                "value": f"CHF {net_value:,.0f}",
+                "change": f"Gross: CHF {total_value:,.0f}",
+                "change_type": "positive",
+                "icon": "wallet"
+            }
+        ]
+
+        # Generate recommendations
+        recommendations = []
+
+        if leverage_ratio >= 2.0:
+            recommendations.append(
+                "🔴 CRITICAL: Leverage ratio exceeds 2.0x. High risk of margin call. "
+                "Consider deleveraging by selling positions or adding cash."
+            )
+        elif leverage_ratio >= 1.5:
+            recommendations.append(
+                "⚠️ WARNING: Leverage ratio above 1.5x. Monitor closely and maintain "
+                "adequate cash reserves to avoid margin calls."
+            )
+        elif leverage_ratio > 1.0:
+            recommendations.append(
+                "💡 Moderate leverage detected. Ensure borrowing costs are justified by "
+                "expected returns. Consider the impact of interest rate changes."
+            )
+        else:
+            recommendations.append(
+                "✅ No leverage detected. Portfolio is operating within safe parameters."
+            )
+
+        if annual_interest > net_value * 0.05:
+            recommendations.append(
+                f"⚠️ Annual interest cost (CHF {annual_interest:,.0f}) exceeds 5% of "
+                f"net portfolio value. Review if margin leverage is cost-effective."
+            )
+
+        if not is_leveraged and total_cash > total_value * 0.25:
+            recommendations.append(
+                f"💡 Cash represents {(total_cash / total_value * 100):.1f}% of portfolio. "
+                f"Consider using margin strategically if investment opportunities exist, "
+                f"but maintain prudent leverage limits."
+            )
+
+        return {
+            "success": True,
+            "session_id": session_id,
+            "display_type": "kpi_cards",
+            "content": summary,
+            "kpis": kpis,
+            "margin": {
+                "leverage_ratio": leverage_ratio,
+                "margin_debt_chf": margin_debt,
+                "net_value_chf": net_value,
+                "gross_value_chf": total_value,
+                "annual_interest_chf": annual_interest,
+                "monthly_interest_chf": monthly_interest,
+                "interest_rate_pct": margin_interest_rate,
+                "is_leveraged": is_leveraged,
+                "recommendations": recommendations,
+                "disclaimer": (
+                    "Note: This is a simplified margin analysis based on portfolio data. "
+                    "For accurate margin calculations, consult your broker's margin "
+                    "statements which include maintenance requirements, borrowing power, "
+                    "and margin call thresholds."
+                )
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"[{session_id}] Error analyzing margin: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error": str(e),
+            "display_type": "text"
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# FULL REPORT GENERATOR — Comprehensive portfolio analysis
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@mcp.tool()
+async def generate_full_report(
+    session_id: str,
+) -> dict:
+    """
+    Generate a comprehensive portfolio analysis report.
+
+    Orchestrates ALL available analysis tools to create a complete
+    portfolio health check:
+
+    1. Portfolio allocation (get_portfolio_allocation)
+    2. Compliance check (check_compliance)
+    3. Market data for listed positions (get_market_data)
+    4. Dividend income analysis (analyze_dividends)
+    5. Margin utilization (analyze_margin)
+    6. Risk metrics for top 3 positions (analyze_risk)
+    7. Momentum indicators for top 3 positions (analyze_momentum)
+    8. Correlation analysis (analyze_correlation)
+
+    Returns a structured report with all sections combined.
+
+    Args:
+        session_id: Portfolio session identifier
+
+    Returns:
+        Comprehensive report with all analysis sections
+
+    Example prompts:
+        - "Generate a full portfolio report"
+        - "Give me a complete analysis of my portfolio"
+        - "Run all available portfolio analyses"
+        - "Comprehensive portfolio health check"
+    """
+    logger.info(f"[{session_id}] Generating full portfolio report...")
+
+    try:
+        # Load portfolio first to get basic info
+        with get_session() as db_session:
+            portfolio = db_session.get(Portfolio, session_id)
+            if not portfolio:
+                return {
+                    "success": False,
+                    "error": f"Portfolio {session_id} not found.",
+                    "display_type": "text"
+                }
+
+            from app.models.portfolio import PortfolioData
+            portfolio_data = PortfolioData.model_validate_json(portfolio.data_json)
+
+        logger.info(f"[{session_id}] Running comprehensive analysis...")
+
+        # Section 1: Portfolio allocation
+        logger.info(f"[{session_id}] [1/8] Fetching portfolio allocation...")
+        allocation_result = await get_portfolio_allocation(session_id)
+
+        # Section 2: Compliance check
+        logger.info(f"[{session_id}] [2/8] Running compliance check...")
+        compliance_result = await check_compliance(session_id)
+
+        # Section 3: Market data
+        logger.info(f"[{session_id}] [3/8] Fetching market data...")
+        market_result = await get_market_data(session_id)
+
+        # Section 4: Dividend analysis
+        logger.info(f"[{session_id}] [4/8] Analyzing dividends...")
+        dividend_result = await analyze_dividends(session_id)
+
+        # Section 5: Margin analysis
+        logger.info(f"[{session_id}] [5/8] Analyzing margin...")
+        margin_result = await analyze_margin(session_id)
+
+        # Section 6-8: Risk/Momentum/Correlation for listed positions
+        listed_positions = [p for p in portfolio_data.positions if p.ticker and p.is_listed]
+
+        risk_results = []
+        momentum_results = []
+
+        if listed_positions:
+            # Top 3 positions by value
+            top_3 = sorted(listed_positions, key=lambda p: p.value_chf, reverse=True)[:3]
+
+            logger.info(f"[{session_id}] [6/8] Analyzing risk for top {len(top_3)} positions...")
+            for pos in top_3:
+                try:
+                    risk_result = await analyze_risk(session_id, pos.ticker)
+                    risk_results.append({
+                        "ticker": pos.ticker,
+                        "name": pos.name,
+                        "result": risk_result
+                    })
+                except Exception as e:
+                    logger.warning(f"[{session_id}] Failed to analyze risk for {pos.ticker}: {e}")
+
+            logger.info(f"[{session_id}] [7/8] Analyzing momentum for top {len(top_3)} positions...")
+            for pos in top_3:
+                try:
+                    momentum_result = await analyze_momentum(session_id, pos.ticker)
+                    momentum_results.append({
+                        "ticker": pos.ticker,
+                        "name": pos.name,
+                        "result": momentum_result
+                    })
+                except Exception as e:
+                    logger.warning(f"[{session_id}] Failed to analyze momentum for {pos.ticker}: {e}")
+
+            logger.info(f"[{session_id}] [8/8] Analyzing correlation...")
+            # Extract all tickers for correlation analysis
+            all_tickers = [pos.ticker for pos in listed_positions]
+            correlation_result = await analyze_correlation(session_id, all_tickers)
+        else:
+            correlation_result = {
+                "success": False,
+                "message": "No listed positions for correlation analysis"
+            }
+
+        logger.info(f"[{session_id}] Full report generation complete!")
+
+        # Build comprehensive summary
+        summary_lines = [
+            f"📊 COMPREHENSIVE PORTFOLIO REPORT",
+            f"Portfolio: {session_id}",
+            f"Date: {portfolio_data.valuation_date}",
+            f"Total Value: CHF {portfolio_data.total_value_chf:,.2f}",
+            f"",
+            f"✅ Sections completed:",
+            f"  1. Portfolio Allocation",
+            f"  2. Compliance Check",
+            f"  3. Market Data (Live)",
+            f"  4. Dividend Analysis",
+            f"  5. Margin Analysis",
+            f"  6. Risk Analysis ({len(risk_results)} positions)",
+            f"  7. Momentum Analysis ({len(momentum_results)} positions)",
+            f"  8. Correlation Matrix",
+        ]
+
+        summary = "\n".join(summary_lines)
+
+        return {
+            "success": True,
+            "session_id": session_id,
+            "display_type": "text",
+            "content": summary,
+            "report": {
+                "metadata": {
+                    "report_date": portfolio_data.valuation_date,
+                    "portfolio_value_chf": portfolio_data.total_value_chf,
+                    "total_positions": len(portfolio_data.positions),
+                    "listed_positions": len(listed_positions),
+                },
+                "sections": {
+                    "1_allocation": allocation_result,
+                    "2_compliance": compliance_result,
+                    "3_market_data": market_result,
+                    "4_dividends": dividend_result,
+                    "5_margin": margin_result,
+                    "6_risk": risk_results,
+                    "7_momentum": momentum_results,
+                    "8_correlation": correlation_result,
+                },
+                "executive_summary": {
+                    "compliance_status": compliance_result.get("compliance", {}).get("is_compliant", False),
+                    "dividend_yield_pct": dividend_result.get("dividends", {}).get("portfolio_yield_pct", 0.0),
+                    "leverage_ratio": margin_result.get("margin", {}).get("leverage_ratio", 1.0),
+                    "diversification_score": correlation_result.get("correlation", {}).get("diversification_score", 0.0) if correlation_result.get("success") else None,
+                }
+            },
+            "disclaimer": (
+                "This comprehensive report is for informational purposes only. "
+                "It does not constitute financial advice. Consult with a licensed "
+                "financial advisor before making investment decisions."
+            )
+        }
+
+    except Exception as e:
+        logger.error(f"[{session_id}] Error generating full report: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error": str(e),
+            "display_type": "text"
+        }
+
+
+# ============================================================================
+# AGENT 5: ONBOARDING SPECIALIST (Investor Profile Analysis)
+# ============================================================================
+# Adapted from Finance Guru™ Onboarding Specialist (agents/onboarding-specialist.md)
+# Original: Client profiling through questionnaire
+# Adapted: Analyze uploaded PDF portfolio to infer investor profile
+# ============================================================================
+
+@mcp.tool()
+async def analyze_portfolio_profile(session_id: str) -> dict:
+    """
+    Analyze uploaded portfolio to infer investor profile and characteristics.
+
+    Adapted from Finance Guru™ Onboarding Specialist. Instead of asking
+    profile questions, this tool analyzes the portfolio allocation to infer:
+    - Risk tolerance (Conservative/Moderate/Aggressive)
+    - Investment objectives (Income/Growth/Preservation)
+    - Experience level (Beginner/Intermediate/Experienced)
+    - Portfolio maturity and diversification
+
+    Returns profile classification with confirmation questions for validation.
+
+    Args:
+        session_id: Portfolio session identifier
+
+    Returns:
+        dict with:
+            - profile: Inferred investor profile with risk score
+            - characteristics: Investment style indicators
+            - confirmation_questions: Questions to validate profile
+            - recommendations: Suggestions for profile alignment
+    """
+    try:
+        logger.info(f"[{session_id}] Analyzing investor profile from portfolio...")
+
+        # Load portfolio
+        with get_session() as db_session:
+            portfolio = db_session.get(Portfolio, session_id)
+            if not portfolio:
+                return {
+                    "success": False,
+                    "error": f"Portfolio {session_id} not found.",
+                    "display_type": "text"
+                }
+
+            from app.models.portfolio import PortfolioData
+            portfolio_data = PortfolioData.model_validate_json(portfolio.data_json)
+
+        # 1. Calculate risk score based on asset allocation
+        risk_score = 0.0
+        total_weight = 0.0
+
+        # Asset class risk weights (0.0 = lowest risk, 1.0 = highest risk)
+        risk_weights = {
+            "Cash": 0.0,
+            "Bonds": 0.2,
+            "Equities": 0.7,
+            "Structured Products": 0.6,
+            "Others": 0.8,
+        }
+
+        # Calculate risk score from positions (dynamic)
+        total_value = portfolio_data.total_value_chf or sum(p.value_chf for p in portfolio_data.positions)
+        for position in portfolio_data.positions:
+            if total_value > 0:
+                weight = position.value_chf / total_value
+                asset_risk = risk_weights.get(str(position.asset_class.value), 0.5)
+                risk_score += weight * asset_risk
+
+        # Normalize risk score to 0-100 scale
+        risk_score_pct = risk_score * 100
+
+        # 2. Classify risk tolerance
+        if risk_score_pct < 30:
+            risk_tolerance = "Conservative"
+            risk_emoji = "🛡️"
+        elif risk_score_pct < 60:
+            risk_tolerance = "Moderate"
+            risk_emoji = "⚖️"
+        else:
+            risk_tolerance = "Aggressive"
+            risk_emoji = "🚀"
+
+        # 3. Infer investment objectives
+        objectives = []
+
+        # Calculate allocation from positions (dynamic calculation)
+        from app.models.portfolio import AssetClass
+
+        total_value = portfolio_data.total_value_chf or sum(p.value_chf for p in portfolio_data.positions)
+
+        bond_value = sum(p.value_chf for p in portfolio_data.positions if p.asset_class == AssetClass.BONDS)
+        equity_value = sum(p.value_chf for p in portfolio_data.positions if p.asset_class == AssetClass.EQUITIES)
+        cash_value = sum(p.value_chf for p in portfolio_data.positions if p.asset_class == AssetClass.CASH)
+
+        bond_allocation = (bond_value / total_value * 100) if total_value > 0 else 0.0
+        equity_allocation = (equity_value / total_value * 100) if total_value > 0 else 0.0
+        cash_allocation = (cash_value / total_value * 100) if total_value > 0 else 0.0
+
+        # Income objective: High dividend-paying assets (bonds, dividend stocks)
+        if bond_allocation > 20:
+            objectives.append("Income Generation")
+
+        # Growth objective: High equity allocation
+        if equity_allocation > 50:
+            objectives.append("Capital Growth")
+
+        # Preservation objective: High cash/low risk
+        if cash_allocation > 15 or risk_score_pct < 25:
+            objectives.append("Capital Preservation")
+
+        if not objectives:
+            objectives.append("Balanced Approach")
+
+        # 4. Assess diversification level
+        from app.models.portfolio import AssetClass
+
+        position_count = len([p for p in portfolio_data.positions if p.asset_class != AssetClass.CASH])
+        # Calculate unique asset classes from positions
+        unique_asset_classes = set(p.asset_class for p in portfolio_data.positions if p.asset_class != AssetClass.CASH)
+        asset_class_count = len(unique_asset_classes)
+
+        if position_count < 5:
+            diversification_level = "Low"
+            diversification_emoji = "⚠️"
+        elif position_count < 10:
+            diversification_level = "Medium"
+            diversification_emoji = "✅"
+        else:
+            diversification_level = "High"
+            diversification_emoji = "🌟"
+
+        # 5. Infer experience level
+        # Factors: portfolio complexity, diversification, asset class spread
+        experience_score = 0
+
+        # Complex portfolios suggest higher experience
+        if position_count > 10:
+            experience_score += 2
+        elif position_count > 5:
+            experience_score += 1
+
+        # Multiple asset classes suggest sophistication
+        if asset_class_count > 4:
+            experience_score += 2
+        elif asset_class_count > 2:
+            experience_score += 1
+
+        # Alternative investments suggest advanced knowledge
+        # Check for Others or Structured Products in positions
+        has_alternatives = any(
+            p.asset_class in [AssetClass.OTHERS, AssetClass.STRUCTURED_PRODUCTS]
+            for p in portfolio_data.positions
+            if p.value_chf > 0
+        )
+        if has_alternatives:
+            experience_score += 1
+
+        if experience_score >= 4:
+            experience_level = "Experienced"
+        elif experience_score >= 2:
+            experience_level = "Intermediate"
+        else:
+            experience_level = "Beginner"
+
+        # 6. Currency diversification
+        currency_count = len(portfolio_data.currency_exposure)
+        has_currency_diversification = currency_count > 1
+
+        # 7. Generate confirmation questions
+        confirmation_questions = []
+
+        confirmation_questions.append({
+            "category": "Risk Tolerance",
+            "question": f"We've classified your portfolio as '{risk_tolerance}' based on {risk_score_pct:.1f}% risk allocation. Does this match your comfort level with investment risk?",
+            "options": ["Yes, that's accurate", "No, I'm more conservative", "No, I'm more aggressive"]
+        })
+
+        confirmation_questions.append({
+            "category": "Investment Objectives",
+            "question": f"Your portfolio suggests objectives: {', '.join(objectives)}. Are these your primary goals?",
+            "options": ["Yes, that's correct", "Partially - I have other goals", "No, my goals are different"]
+        })
+
+        confirmation_questions.append({
+            "category": "Time Horizon",
+            "question": "What is your investment time horizon?",
+            "options": ["Short-term (< 3 years)", "Medium-term (3-10 years)", "Long-term (> 10 years)"]
+        })
+
+        # 8. Generate recommendations
+        recommendations = []
+
+        if diversification_level == "Low":
+            recommendations.append(
+                f"Consider increasing diversification. Your portfolio has only {position_count} positions. "
+                f"Target at least 8-12 positions across different sectors for better risk management."
+            )
+
+        if not has_currency_diversification and portfolio_data.currency_exposure:
+            recommendations.append(
+                f"Consider currency diversification. Your portfolio is concentrated in {portfolio_data.currency_exposure[0].name}. "
+                f"Adding international exposure can reduce currency risk."
+            )
+
+        if risk_tolerance == "Aggressive" and cash_allocation > 20:
+            recommendations.append(
+                f"High cash allocation ({cash_allocation:.1f}%) may not align with aggressive risk profile. "
+                f"Consider deploying excess cash for better returns."
+            )
+
+        if risk_tolerance == "Conservative" and equity_allocation > 70:
+            recommendations.append(
+                f"High equity allocation ({equity_allocation:.1f}%) may not align with conservative risk profile. "
+                f"Consider adding bonds or stable income assets."
+            )
+
+        if not recommendations:
+            recommendations.append("✅ Portfolio allocation appears well-aligned with inferred investor profile.")
+
+        # Build summary
+        summary_lines = [
+            f"👤 INVESTOR PROFILE ANALYSIS",
+            f"",
+            f"{risk_emoji} Risk Tolerance: {risk_tolerance} ({risk_score_pct:.1f}% risk score)",
+            f"🎯 Investment Objectives: {', '.join(objectives)}",
+            f"{diversification_emoji} Diversification: {diversification_level} ({position_count} positions, {asset_class_count} asset classes)",
+            f"📊 Experience Level: {experience_level}",
+            f"💱 Currency Diversification: {'Yes' if has_currency_diversification else 'No'} ({currency_count} currencies)",
+            f"",
+            f"This profile was inferred from your portfolio allocation. ",
+            f"Please confirm or adjust using the questions below.",
+        ]
+
+        summary = "\n".join(summary_lines)
+
+        logger.info(f"[{session_id}] Profile analysis complete: {risk_tolerance}, {experience_level}")
+
+        return {
+            "success": True,
+            "session_id": session_id,
+            "display_type": "kpi_card",
+            "content": summary,
+            "profile": {
+                "risk_tolerance": risk_tolerance,
+                "risk_score_pct": round(risk_score_pct, 1),
+                "investment_objectives": objectives,
+                "experience_level": experience_level,
+                "diversification_level": diversification_level,
+                "position_count": position_count,
+                "asset_class_count": asset_class_count,
+                "currency_count": currency_count,
+                "has_alternatives": has_alternatives,
+            },
+            "allocation_breakdown": {
+                "equity_pct": equity_allocation,
+                "bond_pct": bond_allocation,
+                "cash_pct": cash_allocation,
+            },
+            "confirmation_questions": confirmation_questions,
+            "recommendations": recommendations,
+            "disclaimer": (
+                "This profile is inferred from portfolio analysis and may not fully capture your circumstances. "
+                "Please review the confirmation questions and adjust as needed. "
+                "Consult with a licensed financial advisor for personalized advice."
+            )
+        }
+
+    except Exception as e:
+        logger.error(f"[{session_id}] Error analyzing portfolio profile: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error": str(e),
+            "display_type": "text"
+        }
+
+
+# ============================================================================
+# AGENT 6: MARKET RESEARCHER (Security Intelligence Analysis)
+# ============================================================================
+# Adapted from Finance Guru™ Market Researcher (agents/market-researcher.md)
+# Original: Comprehensive market research with web search and multi-source validation
+# Adapted: Single-security deep dive using yfinance fundamental and technical data
+# ============================================================================
+
+@mcp.tool()
+async def analyze_security(
+    session_id: str,
+    ticker: str,
+    include_technical: bool = True,
+    include_fundamentals: bool = True,
+) -> dict:
+    """
+    Comprehensive security analysis combining fundamental and technical data.
+
+    Adapted from Finance Guru™ Market Researcher. Provides deep intelligence
+    on a single security using yfinance data:
+    - Company profile and business description
+    - Fundamental metrics (P/E, P/B, ROE, margins, growth rates)
+    - Technical indicators (moving averages, RSI, volume trends)
+    - Analyst recommendations and target prices
+    - Risk factors and key metrics
+
+    Useful for researching new investment opportunities or validating
+    existing positions before making allocation decisions.
+
+    Args:
+        session_id: Portfolio session identifier
+        ticker: Ticker symbol to research (e.g., "AAPL", "MSFT")
+        include_technical: Include technical analysis indicators
+        include_fundamentals: Include fundamental analysis metrics
+
+    Returns:
+        dict with comprehensive security intelligence report
+    """
+    try:
+        import yfinance as yf
+
+        logger.info(f"[{session_id}] Researching security: {ticker}")
+
+        # Fetch comprehensive data
+        stock = yf.Ticker(ticker)
+        info = stock.info
+
+        # 1. Company Profile
+        profile = {
+            "name": info.get("longName", ticker),
+            "sector": info.get("sector", "N/A"),
+            "industry": info.get("industry", "N/A"),
+            "country": info.get("country", "N/A"),
+            "website": info.get("website", "N/A"),
+            "business_summary": info.get("longBusinessSummary", "Not available")[:500] + "...",
+            "employees": info.get("fullTimeEmployees", 0),
+            "market_cap": info.get("marketCap", 0),
+        }
+
+        # 2. Current Price Data
+        current_price = info.get("currentPrice") or info.get("regularMarketPrice", 0)
+        previous_close = info.get("previousClose", 0)
+        day_change_pct = ((current_price - previous_close) / previous_close * 100) if previous_close else 0
+
+        price_data = {
+            "current_price": current_price,
+            "previous_close": previous_close,
+            "day_change_pct": round(day_change_pct, 2),
+            "day_low": info.get("dayLow", 0),
+            "day_high": info.get("dayHigh", 0),
+            "52_week_low": info.get("fiftyTwoWeekLow", 0),
+            "52_week_high": info.get("fiftyTwoWeekHigh", 0),
+            "volume": info.get("volume", 0),
+            "avg_volume": info.get("averageVolume", 0),
+        }
+
+        # 3. Fundamental Metrics (if requested)
+        fundamentals = {}
+        if include_fundamentals:
+            fundamentals = {
+                "valuation": {
+                    "pe_ratio": info.get("trailingPE", 0),
+                    "forward_pe": info.get("forwardPE", 0),
+                    "peg_ratio": info.get("pegRatio", 0),
+                    "price_to_book": info.get("priceToBook", 0),
+                    "price_to_sales": info.get("priceToSalesTrailing12Months", 0),
+                },
+                "profitability": {
+                    "profit_margin": info.get("profitMargins", 0) * 100,
+                    "operating_margin": info.get("operatingMargins", 0) * 100,
+                    "roe": info.get("returnOnEquity", 0) * 100,
+                    "roa": info.get("returnOnAssets", 0) * 100,
+                },
+                "growth": {
+                    "revenue_growth": info.get("revenueGrowth", 0) * 100,
+                    "earnings_growth": info.get("earningsGrowth", 0) * 100,
+                },
+                "financial_health": {
+                    "total_cash": info.get("totalCash", 0),
+                    "total_debt": info.get("totalDebt", 0),
+                    "debt_to_equity": info.get("debtToEquity", 0),
+                    "current_ratio": info.get("currentRatio", 0),
+                    "quick_ratio": info.get("quickRatio", 0),
+                },
+                "dividends": {
+                    "dividend_yield": info.get("dividendYield", 0) * 100 if info.get("dividendYield") else 0,
+                    "payout_ratio": info.get("payoutRatio", 0) * 100 if info.get("payoutRatio") else 0,
+                    "trailing_annual_dividend_rate": info.get("trailingAnnualDividendRate", 0),
+                },
+            }
+
+        # 4. Technical Indicators (if requested)
+        technical = {}
+        if include_technical:
+            # Fetch historical data for technical calculations
+            hist = stock.history(period="6mo")
+
+            if not hist.empty:
+                # Simple Moving Averages
+                sma_50 = hist['Close'].rolling(window=50).mean().iloc[-1] if len(hist) >= 50 else None
+                sma_200 = hist['Close'].rolling(window=200).mean().iloc[-1] if len(hist) >= 200 else None
+
+                # Relative Strength Index (RSI)
+                delta = hist['Close'].diff()
+                gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+                loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+                rs = gain / loss
+                rsi = 100 - (100 / (1 + rs))
+                current_rsi = rsi.iloc[-1] if not rsi.empty else None
+
+                # Bollinger Bands
+                sma_20 = hist['Close'].rolling(window=20).mean()
+                std_20 = hist['Close'].rolling(window=20).std()
+                upper_band = sma_20 + (std_20 * 2)
+                lower_band = sma_20 - (std_20 * 2)
+
+                technical = {
+                    "moving_averages": {
+                        "sma_50": round(sma_50, 2) if sma_50 else None,
+                        "sma_200": round(sma_200, 2) if sma_200 else None,
+                        "price_vs_sma_50": round((current_price - sma_50) / sma_50 * 100, 2) if sma_50 else None,
+                        "price_vs_sma_200": round((current_price - sma_200) / sma_200 * 100, 2) if sma_200 else None,
+                    },
+                    "momentum": {
+                        "rsi_14": round(current_rsi, 2) if current_rsi else None,
+                        "rsi_signal": "Oversold" if current_rsi and current_rsi < 30 else ("Overbought" if current_rsi and current_rsi > 70 else "Neutral"),
+                    },
+                    "volatility": {
+                        "upper_bollinger": round(upper_band.iloc[-1], 2) if not upper_band.empty else None,
+                        "lower_bollinger": round(lower_band.iloc[-1], 2) if not lower_band.empty else None,
+                        "beta": info.get("beta", 1.0),
+                    }
+                }
+
+        # 5. Analyst Recommendations
+        recommendations = {
+            "target_mean_price": info.get("targetMeanPrice", 0),
+            "target_high_price": info.get("targetHighPrice", 0),
+            "target_low_price": info.get("targetLowPrice", 0),
+            "recommendation": info.get("recommendationKey", "N/A"),
+            "number_of_analysts": info.get("numberOfAnalystOpinions", 0),
+        }
+
+        upside_pct = ((recommendations["target_mean_price"] - current_price) / current_price * 100) if recommendations["target_mean_price"] and current_price else 0
+
+        # 6. Risk Assessment
+        risk_factors = []
+
+        if fundamentals:
+            # High debt
+            if fundamentals["financial_health"]["debt_to_equity"] > 2.0:
+                risk_factors.append(f"⚠️ High leverage: Debt-to-Equity ratio of {fundamentals['financial_health']['debt_to_equity']:.1f}")
+
+            # Negative earnings
+            if fundamentals["profitability"]["profit_margin"] < 0:
+                risk_factors.append(f"⚠️ Unprofitable: Negative profit margin of {fundamentals['profitability']['profit_margin']:.1f}%")
+
+            # High valuation
+            if fundamentals["valuation"]["pe_ratio"] > 50:
+                risk_factors.append(f"⚠️ High valuation: P/E ratio of {fundamentals['valuation']['pe_ratio']:.1f}")
+
+        if technical:
+            # High volatility
+            if technical["volatility"]["beta"] > 1.5:
+                risk_factors.append(f"⚠️ High volatility: Beta of {technical['volatility']['beta']:.2f}")
+
+        if not risk_factors:
+            risk_factors.append("✅ No major risk flags detected in available data")
+
+        # 7. Investment Summary
+        summary_lines = [
+            f"🔍 SECURITY INTELLIGENCE REPORT: {ticker}",
+            f"",
+            f"📋 {profile['name']}",
+            f"Sector: {profile['sector']} | Industry: {profile['industry']}",
+            f"",
+            f"💰 Price: ${current_price:.2f} ({'+' if day_change_pct > 0 else ''}{day_change_pct:.2f}%)",
+            f"52-Week Range: ${price_data['52_week_low']:.2f} - ${price_data['52_week_high']:.2f}",
+        ]
+
+        if fundamentals:
+            summary_lines.extend([
+                f"",
+                f"📊 Fundamentals:",
+                f"  P/E: {fundamentals['valuation']['pe_ratio']:.1f} | P/B: {fundamentals['valuation']['price_to_book']:.2f}",
+                f"  ROE: {fundamentals['profitability']['roe']:.1f}% | Profit Margin: {fundamentals['profitability']['profit_margin']:.1f}%",
+            ])
+
+        if technical:
+            summary_lines.extend([
+                f"",
+                f"📈 Technical:",
+                f"  RSI: {technical['momentum']['rsi_14']:.1f} ({technical['momentum']['rsi_signal']})",
+                f"  Beta: {technical['volatility']['beta']:.2f}",
+            ])
+
+        if recommendations["target_mean_price"]:
+            summary_lines.extend([
+                f"",
+                f"🎯 Analyst Target: ${recommendations['target_mean_price']:.2f} ({'+' if upside_pct > 0 else ''}{upside_pct:.1f}% upside)",
+                f"Recommendation: {recommendations['recommendation'].upper()} ({recommendations['number_of_analysts']} analysts)",
+            ])
+
+        summary = "\n".join(summary_lines)
+
+        logger.info(f"[{session_id}] Security research complete for {ticker}")
+
+        return {
+            "success": True,
+            "session_id": session_id,
+            "ticker": ticker,
+            "display_type": "text",
+            "content": summary,
+            "research": {
+                "profile": profile,
+                "price_data": price_data,
+                "fundamentals": fundamentals,
+                "technical": technical,
+                "analyst_recommendations": recommendations,
+                "risk_factors": risk_factors,
+                "upside_potential_pct": round(upside_pct, 1),
+            },
+            "disclaimer": (
+                "This research report is for informational purposes only. "
+                "Data sourced from yfinance may be delayed. This does not constitute "
+                "investment advice. Consult with a licensed financial advisor."
+            )
+        }
+
+    except Exception as e:
+        logger.error(f"[{session_id}] Error researching security {ticker}: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error": str(e),
+            "ticker": ticker,
+            "display_type": "text"
+        }
+
+
+# ============================================================================
+# AGENT 7: STRATEGY ADVISOR (Portfolio Rebalancing Recommendations)
+# ============================================================================
+# Adapted from Finance Guru™ Strategy Advisor (agents/strategy-advisor.md)
+# Original: Comprehensive strategic planning with margin, dividend, cash-flow integration
+# Adapted: Portfolio rebalancing recommendations based on allocation drift and goals
+# ============================================================================
+
+@mcp.tool()
+async def recommend_rebalancing(
+    session_id: str,
+    target_equity_pct: float | None = None,
+    target_bond_pct: float | None = None,
+    target_cash_pct: float | None = None,
+    rebalancing_threshold_pct: float = 5.0,
+) -> dict:
+    """
+    Generate strategic rebalancing recommendations to align portfolio with target allocation.
+
+    Adapted from Finance Guru™ Strategy Advisor. Analyzes current portfolio allocation
+    and compares it to target allocation (either user-specified or inferred from profile).
+    Provides specific buy/sell recommendations to rebalance positions.
+
+    Rebalancing triggers when any asset class drifts beyond the threshold percentage
+    from its target allocation.
+
+    Args:
+        session_id: Portfolio session identifier
+        target_equity_pct: Target equity allocation (default: inferred from profile)
+        target_bond_pct: Target bond allocation (default: inferred from profile)
+        target_cash_pct: Target cash allocation (default: inferred from profile)
+        rebalancing_threshold_pct: Trigger rebalancing when drift exceeds this (default: 5%)
+
+    Returns:
+        dict with:
+            - allocation_drift: Current vs target allocation comparison
+            - rebalancing_required: Whether rebalancing is needed
+            - recommendations: Specific buy/sell actions with CHF amounts
+            - implementation_plan: Step-by-step execution guidance
+    """
+    try:
+        logger.info(f"[{session_id}] Generating rebalancing recommendations...")
+
+        # Load portfolio
+        with get_session() as db_session:
+            portfolio = db_session.get(Portfolio, session_id)
+            if not portfolio:
+                return {
+                    "success": False,
+                    "error": f"Portfolio {session_id} not found.",
+                    "display_type": "text"
+                }
+
+            from app.models.portfolio import PortfolioData
+            portfolio_data = PortfolioData.model_validate_json(portfolio.data_json)
+
+        # Get current allocation (calculate from positions dynamically)
+        from app.models.portfolio import AssetClass
+
+        total_value = portfolio_data.total_value_chf or sum(p.value_chf for p in portfolio_data.positions)
+
+        equity_value = sum(p.value_chf for p in portfolio_data.positions if p.asset_class == AssetClass.EQUITIES)
+        bond_value = sum(p.value_chf for p in portfolio_data.positions if p.asset_class == AssetClass.BONDS)
+        cash_value = sum(p.value_chf for p in portfolio_data.positions if p.asset_class == AssetClass.CASH)
+
+        current_equity = (equity_value / total_value * 100) if total_value > 0 else 0.0
+        current_bond = (bond_value / total_value * 100) if total_value > 0 else 0.0
+        current_cash = (cash_value / total_value * 100) if total_value > 0 else 0.0
+        current_other = 100.0 - (current_equity + current_bond + current_cash)
+
+        # Infer target allocation if not specified
+        if target_equity_pct is None or target_bond_pct is None or target_cash_pct is None:
+            # Use a moderate balanced portfolio as default
+            # This could be enhanced to use the investor profile from analyze_portfolio_profile
+            if current_equity > 60:
+                # Aggressive profile
+                target_equity_pct = target_equity_pct or 70.0
+                target_bond_pct = target_bond_pct or 20.0
+                target_cash_pct = target_cash_pct or 10.0
+            elif current_equity < 40:
+                # Conservative profile
+                target_equity_pct = target_equity_pct or 40.0
+                target_bond_pct = target_bond_pct or 45.0
+                target_cash_pct = target_cash_pct or 15.0
+            else:
+                # Moderate profile
+                target_equity_pct = target_equity_pct or 60.0
+                target_bond_pct = target_bond_pct or 30.0
+                target_cash_pct = target_cash_pct or 10.0
+
+        # Calculate allocation drift
+        equity_drift = current_equity - target_equity_pct
+        bond_drift = current_bond - target_bond_pct
+        cash_drift = current_cash - target_cash_pct
+
+        # Check if rebalancing is needed
+        rebalancing_required = (
+            abs(equity_drift) > rebalancing_threshold_pct or
+            abs(bond_drift) > rebalancing_threshold_pct or
+            abs(cash_drift) > rebalancing_threshold_pct
+        )
+
+        # Calculate CHF amounts for rebalancing
+        total_value = portfolio_data.total_value_chf
+
+        equity_rebalance_chf = (target_equity_pct - current_equity) / 100 * total_value
+        bond_rebalance_chf = (target_bond_pct - current_bond) / 100 * total_value
+        cash_rebalance_chf = (target_cash_pct - current_cash) / 100 * total_value
+
+        # Generate recommendations
+        recommendations = []
+
+        if abs(equity_drift) > rebalancing_threshold_pct:
+            action = "Buy" if equity_drift < 0 else "Sell"
+            amount = abs(equity_rebalance_chf)
+            recommendations.append({
+                "asset_class": "Equity",
+                "action": action,
+                "amount_chf": amount,
+                "current_pct": current_equity,
+                "target_pct": target_equity_pct,
+                "drift_pct": equity_drift,
+                "priority": "High" if abs(equity_drift) > rebalancing_threshold_pct * 2 else "Medium"
+            })
+
+        if abs(bond_drift) > rebalancing_threshold_pct:
+            action = "Buy" if bond_drift < 0 else "Sell"
+            amount = abs(bond_rebalance_chf)
+            recommendations.append({
+                "asset_class": "Bond",
+                "action": action,
+                "amount_chf": amount,
+                "current_pct": current_bond,
+                "target_pct": target_bond_pct,
+                "drift_pct": bond_drift,
+                "priority": "High" if abs(bond_drift) > rebalancing_threshold_pct * 2 else "Medium"
+            })
+
+        if abs(cash_drift) > rebalancing_threshold_pct:
+            action = "Increase" if cash_drift < 0 else "Deploy"
+            amount = abs(cash_rebalance_chf)
+            recommendations.append({
+                "asset_class": "Cash",
+                "action": action,
+                "amount_chf": amount,
+                "current_pct": current_cash,
+                "target_pct": target_cash_pct,
+                "drift_pct": cash_drift,
+                "priority": "Medium" if abs(cash_drift) > rebalancing_threshold_pct * 1.5 else "Low"
+            })
+
+        # Generate implementation plan
+        implementation_steps = []
+
+        if rebalancing_required:
+            # Step 1: Tax considerations
+            implementation_steps.append({
+                "step": 1,
+                "action": "Review Tax Implications",
+                "description": "Consult with tax advisor about capital gains implications of selling positions. Consider tax-loss harvesting opportunities."
+            })
+
+            # Step 2: Prioritize actions
+            high_priority = [r for r in recommendations if r["priority"] == "High"]
+            if high_priority:
+                implementation_steps.append({
+                    "step": 2,
+                    "action": "Execute High Priority Rebalancing",
+                    "description": f"Focus first on {', '.join([r['asset_class'] for r in high_priority])} allocation adjustments."
+                })
+
+            # Step 3: Execution strategy
+            implementation_steps.append({
+                "step": 3,
+                "action": "Execute Trades",
+                "description": "Execute rebalancing trades over 1-2 days to minimize market impact. Use limit orders for large positions."
+            })
+
+            # Step 4: Monitoring
+            implementation_steps.append({
+                "step": 4,
+                "action": "Monitor and Document",
+                "description": "Track execution costs and updated allocation. Schedule next rebalancing review in 3-6 months."
+            })
+        else:
+            implementation_steps.append({
+                "step": 1,
+                "action": "No Action Required",
+                "description": f"Portfolio allocation is within {rebalancing_threshold_pct}% of target. Continue monitoring."
+            })
+
+        # Build summary
+        summary_lines = [
+            f"🧭 PORTFOLIO REBALANCING ANALYSIS",
+            f"",
+            f"Target Allocation: {target_equity_pct:.0f}% Equity | {target_bond_pct:.0f}% Bond | {target_cash_pct:.0f}% Cash",
+            f"Current Allocation: {current_equity:.1f}% Equity | {current_bond:.1f}% Bond | {current_cash:.1f}% Cash",
+            f"",
+            f"Rebalancing Status: {'⚠️ REQUIRED' if rebalancing_required else '✅ NOT REQUIRED'}",
+        ]
+
+        if rebalancing_required:
+            summary_lines.append(f"")
+            summary_lines.append(f"📋 Recommended Actions:")
+            for rec in recommendations:
+                summary_lines.append(
+                    f"  • {rec['action']} {rec['asset_class']}: CHF {rec['amount_chf']:,.0f} "
+                    f"({rec['current_pct']:.1f}% → {rec['target_pct']:.1f}%)"
+                )
+        else:
+            summary_lines.append(f"")
+            summary_lines.append(f"✅ All asset classes within {rebalancing_threshold_pct}% of target allocation.")
+            summary_lines.append(f"No rebalancing needed at this time.")
+
+        summary = "\n".join(summary_lines)
+
+        logger.info(f"[{session_id}] Rebalancing analysis complete. Required: {rebalancing_required}")
+
+        return {
+            "success": True,
+            "session_id": session_id,
+            "display_type": "kpi_card",
+            "content": summary,
+            "rebalancing": {
+                "required": rebalancing_required,
+                "threshold_pct": rebalancing_threshold_pct,
+                "target_allocation": {
+                    "equity_pct": target_equity_pct,
+                    "bond_pct": target_bond_pct,
+                    "cash_pct": target_cash_pct,
+                },
+                "current_allocation": {
+                    "equity_pct": current_equity,
+                    "bond_pct": current_bond,
+                    "cash_pct": current_cash,
+                },
+                "drift": {
+                    "equity_pct": round(equity_drift, 1),
+                    "bond_pct": round(bond_drift, 1),
+                    "cash_pct": round(cash_drift, 1),
+                },
+                "recommendations": recommendations,
+                "implementation_plan": implementation_steps,
+            },
+            "disclaimer": (
+                "This rebalancing analysis is for informational purposes only. "
+                "Consider tax implications, transaction costs, and market conditions. "
+                "Consult with a licensed financial advisor before executing trades."
+            )
+        }
+
+    except Exception as e:
+        logger.error(f"[{session_id}] Error generating rebalancing recommendations: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error": str(e),
+            "display_type": "text"
+        }

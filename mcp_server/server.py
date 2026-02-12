@@ -71,8 +71,19 @@ if __name__ == "__main__":
     # Run server
     if transport == "streamable-http":
         # Streamable HTTP mode (for React frontend)
-        print(f"Starting WealthPoint Analysis MCP Server in Streamable HTTP mode on port {port}...")
-        mcp.run(transport="streamable-http", port=port)
+        # Use uvicorn to run the FastMCP Starlette app with custom port
+        import uvicorn
+
+        print(f"Starting WealthPoint Analysis MCP Server in Streamable HTTP mode on port {port}...", file=sys.stderr)
+
+        # Get the ASGI app from FastMCP and run it with uvicorn
+        app = mcp.streamable_http_app()
+        uvicorn.run(
+            app,
+            host="0.0.0.0",
+            port=port,
+            log_level="info"
+        )
     else:
         # stdio mode (for Claude Desktop, Claude Code)
         print("Starting WealthPoint Analysis MCP Server in stdio mode...", file=sys.stderr)

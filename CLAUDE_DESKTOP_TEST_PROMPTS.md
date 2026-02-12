@@ -343,3 +343,369 @@ Analyse le risque global de mon portefeuille
 
 ---
 
+## 🆕 Phase 4 — Agent Tools (7 nouveaux outils)
+
+### Test 1: check_compliance — Compliance Officer
+
+**Prompt basique** :
+```
+Vérifie la compliance de mon portefeuille avec les limites standard
+```
+
+**Prompt avec limites personnalisées** :
+```
+Vérifie la compliance de mon portefeuille avec :
+- Maximum 15% par position individuelle
+- Maximum 60% par classe d'actifs
+- Minimum 10 positions pour la diversification
+- Cash entre 5% et 20%
+```
+
+**Résultat attendu** :
+- Status de compliance (compliant/non-compliant)
+- Violations détaillées par sévérité (critical, high, medium, low)
+- Montants CHF à ajuster pour chaque violation
+- Recommandations prioritaires pour corriger les violations
+- KPIs : nombre de violations, concentration max, cash allocation
+
+---
+
+### Test 2: analyze_dividends — Dividend Specialist
+
+**Prompt** :
+```
+Analyse le potentiel de revenus de dividendes de mon portefeuille
+```
+
+**Prompt alternatif** :
+```
+Quelles sont mes 5 meilleures sources de revenus de dividendes ?
+Combien est-ce que je vais recevoir en dividendes cette année ?
+```
+
+**Résultat attendu** :
+- Portfolio dividend yield (moyenne pondérée)
+- Revenu annuel projeté en CHF
+- Top 5 contributeurs aux dividendes
+- Concentration des dividendes (% du total)
+- Positions éligibles vs positions payant des dividendes
+- Recommandations pour optimiser les revenus
+- KPIs : yield global, revenu annuel, nombre de positions payantes
+
+---
+
+### Test 3: analyze_margin — Margin Specialist
+
+**Prompt basique** :
+```
+Analyse mon utilisation de marge et mes coûts d'intérêts
+```
+
+**Prompt avec taux personnalisé** :
+```
+Analyse ma marge avec un taux d'intérêt de 6.5%
+Combien je paie en intérêts par mois ?
+```
+
+**Résultat attendu** :
+- Ratio de leverage (1.0 = pas de marge, >1.0 = position à effet de levier)
+- Dette de marge estimée en CHF
+- Coûts d'intérêts annuels et mensuels
+- Valeur nette vs valeur brute du portefeuille
+- Warnings si leverage > 1.5x (risque élevé)
+- Recommandations pour gestion de la marge
+- KPIs : leverage ratio, coûts annuels, valeur nette
+
+**Note** : Implémentation simplifiée basée sur la position cash. L'analyse complète nécessiterait les données broker (maintenance requirements, margin call thresholds).
+
+---
+
+### Test 4: generate_full_report — Full Report Generator
+
+**Prompt** :
+```
+Génère un rapport complet de mon portefeuille avec toutes les analyses
+```
+
+**Prompt alternatif** :
+```
+Donne-moi un health check institutionnel complet de mon portfolio
+```
+
+**Résultat attendu** :
+- Orchestration de 8 sections :
+  1. Portfolio Allocation (par classe d'actifs)
+  2. Compliance Check (violations et conformité)
+  3. Market Data (prix live de toutes les positions cotées)
+  4. Dividend Analysis (revenus et yield)
+  5. Margin Analysis (leverage et coûts)
+  6. Risk Analysis (top 3 positions par value)
+  7. Momentum Analysis (top 3 positions)
+  8. Correlation Matrix (toutes les positions cotées)
+- Executive Summary avec KPIs clés :
+  - Status de compliance
+  - Dividend yield global
+  - Leverage ratio
+  - Diversification score
+- Gestion d'erreurs : sections partielles si certaines analyses échouent
+
+**Durée estimée** : 30-60 secondes (appels séquentiels à 8 outils)
+
+---
+
+### Test 5: analyze_portfolio_profile — Onboarding Specialist
+
+**Prompt** :
+```
+Analyse mon profil d'investisseur à partir de mon portefeuille
+Quel est mon niveau de tolérance au risque ?
+```
+
+**Prompt alternatif** :
+```
+Est-ce que mon allocation correspond à un profil conservateur,
+modéré ou agressif ?
+```
+
+**Résultat attendu** :
+- Classification de tolérance au risque (Conservative/Moderate/Aggressive)
+- Risk score de 0-100 basé sur l'allocation d'actifs
+- Objectifs d'investissement inférés (Income/Growth/Preservation)
+- Niveau d'expérience (Beginner/Intermediate/Experienced)
+- Analyse de diversification :
+  - Nombre de positions
+  - Nombre de classes d'actifs
+  - Nombre de devises
+  - Présence d'alternatives/crypto
+- Questions de confirmation pour validation du profil
+- Recommandations d'alignement si désalignement détecté
+- KPIs : risk score, diversification level, experience level
+
+**Adaptation** : L'agent Finance Guru original utilisait un questionnaire. L'outil MCP analyse l'allocation du portfolio PDF uploadé.
+
+---
+
+### Test 6: analyze_security — Market Researcher
+
+**Prompt basique** :
+```
+Fais une recherche complète sur Apple (AAPL)
+avec analyse fondamentale et technique
+```
+
+**Prompt fondamentale seulement** :
+```
+Analyse les fondamentaux de Microsoft (MSFT)
+sans les indicateurs techniques
+```
+
+**Prompt technique seulement** :
+```
+Donne-moi l'analyse technique de NVIDIA (NVDA)
+RSI, moyennes mobiles, Bollinger Bands
+```
+
+**Résultat attendu** :
+
+**Profil de l'entreprise** :
+- Nom, secteur, industrie, pays
+- Description du business
+- Nombre d'employés, market cap
+- Site web
+
+**Prix actuel** :
+- Prix actuel et variation du jour
+- Ranges : jour (low/high), 52 semaines (low/high)
+- Volume vs volume moyen
+
+**Métriques fondamentales** :
+- Valorisation : P/E, P/B, PEG, Price-to-Sales
+- Profitabilité : marges (profit, operating), ROE, ROA
+- Croissance : revenue growth, earnings growth
+- Santé financière : cash, dette, debt-to-equity, ratios de liquidité
+- Dividendes : yield, payout ratio, dividend rate annuel
+
+**Indicateurs techniques** :
+- Moyennes mobiles : SMA 50, SMA 200, % vs prix actuel
+- Momentum : RSI 14 (overbought/oversold/neutral)
+- Volatilité : Bollinger Bands (upper/lower), Beta
+
+**Recommandations analystes** :
+- Prix cible moyen, high, low
+- Consensus (buy/hold/sell)
+- Nombre d'analystes
+- Potentiel de hausse (% upside vs prix cible)
+
+**Facteurs de risque** :
+- High leverage (debt-to-equity > 2.0)
+- Négative earnings (profit margin < 0)
+- High valuation (P/E > 50)
+- High volatility (Beta > 1.5)
+
+**Use case** : Rechercher de nouvelles opportunités ou valider des positions existantes avant ajustement d'allocation.
+
+---
+
+### Test 7: recommend_rebalancing — Strategy Advisor
+
+**Prompt basique** :
+```
+Recommande un rebalancing de mon portefeuille
+vers une allocation 60% actions, 30% obligations, 10% cash
+```
+
+**Prompt avec allocation auto-inférée** :
+```
+Est-ce que je devrais rebalancer mon portefeuille ?
+Quelle est l'allocation cible recommandée pour mon profil ?
+```
+
+**Prompt avec seuil personnalisé** :
+```
+Vérifie si je dois rebalancer avec un seuil de 3%
+(déclencher si drift > 3% de la cible)
+```
+
+**Résultat attendu** :
+
+**Allocation drift** :
+- Target allocation (user-specified ou inferred from profile)
+- Current allocation (equity, bond, cash, other)
+- Drift par classe d'actifs (en %)
+
+**Rebalancing required** :
+- Boolean : true si drift > threshold (default 5%)
+- Threshold utilisé pour le déclenchement
+
+**Recommandations d'actions** :
+- Asset class concernée
+- Action : Buy/Sell/Increase/Deploy
+- Montant en CHF à ajuster
+- Priorité : High/Medium/Low (selon l'ampleur du drift)
+- Current % → Target %
+
+**Plan d'implémentation** :
+1. Review Tax Implications (consulter conseiller fiscal)
+2. Execute High Priority Rebalancing (focus sur drifts critiques)
+3. Execute Trades (spread sur 1-2 jours, limit orders)
+4. Monitor and Document (tracking des coûts, schedule next review)
+
+**KPIs** :
+- Rebalancing required (yes/no)
+- Nombre de classes d'actifs à ajuster
+- Montant total à rebalancer (CHF)
+- Priorité max (High/Medium/Low)
+
+**Use case** : Maintenir l'allocation cible, rebalancing tax-efficient, drift monitoring.
+
+---
+
+## 🎯 Workflow de Test Phase 4 — Agents Complets
+
+### Test Rapide (5 min)
+```
+1. Vérifie la compliance de mon portefeuille
+2. Analyse mes revenus de dividendes
+3. Analyse mon profil d'investisseur
+4. Recommande un rebalancing vers 60/30/10
+```
+
+### Test Complet (15 min)
+```
+1. Upload un portfolio PDF
+2. Génère un rapport complet (generate_full_report)
+3. Vérifie la compliance avec limites strictes
+4. Analyse les dividendes et identifie les top contributeurs
+5. Vérifie l'utilisation de marge et les coûts d'intérêts
+6. Analyse mon profil d'investisseur inféré
+7. Recherche en profondeur sur une position spécifique (ex: AAPL)
+8. Recommande un rebalancing avec allocation cible personnalisée
+```
+
+### Test Institutionnel (30 min) — Full Portfolio Review
+```
+1. Upload portfolio PDF
+2. Generate full report (8 sections orchestrées)
+3. Pour chaque violation de compliance :
+   - Recherche détaillée sur les positions concernées
+   - Analyse de risque approfondie
+   - Recommandation de rebalancing pour corriger
+4. Pour les positions à haut dividend yield :
+   - Vérifier la soutenabilité (payout ratio)
+   - Analyser la croissance des dividendes
+5. Analyse du profil investisseur et validation :
+   - Est-ce que l'allocation reflète bien le risk score ?
+   - Recommandations d'alignement
+6. Plan stratégique de rebalancing avec priorités
+```
+
+---
+
+## 📊 Tableau Récapitulatif — 16 Outils Actifs
+
+| # | Tool | Type | Purpose | Prompt Test |
+|---|------|------|---------|-------------|
+| 1 | `upload_portfolio` | Core | Upload PDF | "Upload mon portfolio PDF" |
+| 2 | `ask_portfolio` | Core | Q&A intelligent | "Synthétise mon portefeuille" |
+| 3 | `get_market_data` | Phase 2 | Prix live | "Données marché pour toutes positions" |
+| 4 | `get_portfolio_allocation` | Phase 3 | Allocation | "Quelle est mon allocation ?" |
+| 5 | `analyze_risk` | Phase 2 | Risk metrics | "Analyse risque de AAPL" |
+| 6 | `analyze_momentum` | Phase 2 | Momentum | "Indicateurs momentum NVDA" |
+| 7 | `analyze_correlation` | Phase 2 | Correlation | "Corrélation AAPL, NVDA, SPY" |
+| 8 | `price_options` | Phase 2 | Options pricing | "Prix call AAPL strike 180" |
+| 9 | `optimize_portfolio` | Phase 2 | Optimization | "Optimise avec Max Sharpe" |
+| 10 | `check_compliance` | Phase 4 | Compliance | "Vérifie la compliance" |
+| 11 | `analyze_dividends` | Phase 4 | Dividends | "Analyse mes dividendes" |
+| 12 | `analyze_margin` | Phase 4 | Margin | "Analyse mon utilisation marge" |
+| 13 | `generate_full_report` | Phase 4 | Report | "Rapport complet portefeuille" |
+| 14 | `analyze_portfolio_profile` | Phase 4 | Profile | "Analyse mon profil investisseur" |
+| 15 | `analyze_security` | Phase 4 | Research | "Recherche AAPL complète" |
+| 16 | `recommend_rebalancing` | Phase 4 | Rebalancing | "Recommande rebalancing 60/30/10" |
+
+**Désactivés temporairement** (bugs à corriger) :
+- ❌ `get_portfolio_performance` (Bug #4, #5)
+- ❌ `analyze_portfolio_risk` (Bug #1, #2, #3)
+
+---
+
+## 🎓 Exemples Avancés Phase 4
+
+### Combo : Compliance + Rebalancing
+```
+1. Vérifie la compliance avec limites strictes (max 15% par position)
+2. Pour chaque violation détectée, recommande le rebalancing nécessaire
+3. Calcule les montants CHF à vendre pour corriger
+```
+
+### Combo : Profile + Dividends + Strategy
+```
+1. Analyse mon profil investisseur
+2. Si profil = "Income Generation" :
+   - Analyse dividendes en détail
+   - Identifie positions à faible yield
+   - Recommande rebalancing vers high dividend stocks
+3. Génère un plan d'optimisation des revenus
+```
+
+### Combo : Full Report + Deep Dive
+```
+1. Génère le rapport complet
+2. Identifie les red flags (compliance violations, high concentration)
+3. Pour chaque red flag :
+   - Recherche détaillée sur la position (analyze_security)
+   - Analyse de risque approfondie
+   - Recommandation stratégique
+```
+
+### Combo : Research + Compliance + Rebalancing
+```
+1. Recherche fondamentale sur AAPL (analyze_security)
+2. Vérifie si AAPL dépasse les limites de concentration
+3. Si oui, recommande rebalancing pour réduire l'exposition
+4. Suggère des alternatives dans le même secteur (diversification)
+```
+
+---
+
+**Note finale** : Les 7 agents Phase 4 transforment le serveur MCP en plateforme d'analyse institutionnelle complète, couvrant compliance, revenus, leverage, profiling, research, et stratégie. Tous les agents Finance Guru ont été adaptés avec succès ! 🚀
+

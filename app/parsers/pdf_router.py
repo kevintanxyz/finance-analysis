@@ -24,9 +24,16 @@ from app.parsers.cross_validator import CrossValidator, ValidationResult
 # Router Configuration
 # ────────────────────────────────────────────────────────────────────────────
 
-# MVP: Use Claude Vision for all formats
-# TODO: Enable hybrid mode after validating Claude Vision accuracy
-USE_CLAUDE_VISION_ONLY = True  # Set False to enable hybrid pdfplumber + LLM
+# Vision-Only Mode (Production): Claude Vision extracts all sections
+# - Pros: Comprehensive extraction, handles any format
+# - Cons: API costs (~$0.01 per 18-page PDF)
+#
+# Hybrid Mode: Vision (primary) + pdfplumber (fallback verification)
+# - Pros: pdfplumber fills gaps if Vision misses something
+# - Cons: Slightly slower (runs both extractors)
+#
+# Current status: Vision extracts all sections successfully, so hybrid is optional
+USE_CLAUDE_VISION_ONLY = True  # Set False to enable hybrid mode
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -268,50 +275,171 @@ class PDFParserRouter:
         bank_config: BankConfig,
     ) -> tuple[PortfolioData, ValidationResult]:
         """
-        Extract using both pdfplumber + Claude Vision, then cross-validate.
+        Extract using both Claude Vision (primary) + pdfplumber (fallback).
 
         Strategy:
-        1. Try pdfplumber (fast, free)
-        2. Run Claude Vision in parallel
-        3. Cross-validate results
-        4. Return best result or merged result
+        1. Extract with Claude Vision (comprehensive)
+        2. Extract with pdfplumber (specific sections as verification)
+        3. Merge results (Vision primary, pdfplumber fills gaps)
+        4. Validate merged result
         """
         if self.verbose:
-            print("🔄 Running hybrid extraction (pdfplumber + Claude Vision)...")
+            print("🔄 Running hybrid extraction (Claude Vision + pdfplumber fallback)...")
 
-        # Extract with pdfplumber
+        # Step 1: Extract with Claude Vision (primary)
+        vision_result, _ = await self._extract_with_llm(pdf_bytes, bank_config)
+
+        if self.verbose:
+            vision_sections = self._count_non_empty_sections(vision_result)
+            print(f"   📊 Vision extracted {vision_sections} sections")
+
+        # Step 2: Extract with pdfplumber (fallback for missing sections)
+        pdfplumber_result = None
         try:
-            pdfplumber_result, _ = await self._extract_with_pdfplumber(
-                pdf_bytes, bank_config
-            )
+            # For pdfplumber, we need to use ValuationPDFParser for full extraction
+            import tempfile
+            import os
+            from app.parsers.valuation_pdf import ValuationPDFParser
+
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+                tmp.write(pdf_bytes)
+                tmp_path = tmp.name
+
+            try:
+                parser = ValuationPDFParser(tmp_path)
+                pdfplumber_result = parser.parse()
+
+                if self.verbose:
+                    pdfplumber_sections = self._count_non_empty_sections(pdfplumber_result)
+                    print(f"   📄 pdfplumber extracted {pdfplumber_sections} sections")
+            finally:
+                os.unlink(tmp_path)
+
         except Exception as e:
             if self.verbose:
                 print(f"   ⚠️  pdfplumber failed: {e}")
-            pdfplumber_result = None
 
-        # Extract with Claude Vision
-        llm_result, _ = await self._extract_with_llm(pdf_bytes, bank_config)
+        # Step 3: Merge results (Vision primary, pdfplumber fills gaps)
+        if pdfplumber_result:
+            merged_result = self._merge_extractions(vision_result, pdfplumber_result)
 
-        # Cross-validate
-        validation = self.validator.compare(pdfplumber_result, llm_result)
-
-        if self.verbose:
-            print(f"   Cross-validation confidence: {validation.confidence_score:.2f}")
-
-        # Choose best result
-        if not pdfplumber_result:
-            return llm_result, validation
-
-        # If high agreement, prefer pdfplumber (faster, cheaper)
-        if validation.confidence_score > 0.9:
             if self.verbose:
-                print("   ✅ High confidence → using pdfplumber result")
-            return pdfplumber_result, validation
+                merged_sections = self._count_non_empty_sections(merged_result)
+                print(f"   ✅ Merged result has {merged_sections} sections")
+        else:
+            merged_result = vision_result
 
-        # Otherwise use Claude Vision (more accurate)
+        # Step 4: Validate merged result
+        validation = self.validator.validate(merged_result)
+
         if self.verbose:
-            print("   ⚠️  Low confidence → using Claude Vision result")
-        return llm_result, validation
+            print(f"   Validation confidence: {validation.confidence_score:.2f}")
+
+        return merged_result, validation
+
+    def _merge_extractions(
+        self,
+        vision: PortfolioData,
+        pdfplumber: PortfolioData,
+    ) -> PortfolioData:
+        """
+        Merge Vision (primary) with pdfplumber (fallback).
+
+        Rules:
+        - If Vision extracted a section with data → Use Vision
+        - If Vision section is empty BUT pdfplumber has data → Use pdfplumber
+        - Positions: Always prefer Vision (better ISIN recognition)
+        - Metadata: Prefer Vision (better date parsing)
+        """
+        merged = vision.model_copy(deep=True)
+
+        # Asset Allocation - fill gaps from pdfplumber
+        if not merged.asset_allocation and pdfplumber.asset_allocation:
+            merged.asset_allocation = pdfplumber.asset_allocation
+            if self.verbose:
+                print("      → Filled asset_allocation from pdfplumber fallback")
+
+        # Currency Exposure
+        if not merged.currency_exposure and pdfplumber.currency_exposure:
+            merged.currency_exposure = pdfplumber.currency_exposure
+            if self.verbose:
+                print("      → Filled currency_exposure from pdfplumber fallback")
+
+        # Regional Exposure
+        if not merged.regional_exposure and pdfplumber.regional_exposure:
+            merged.regional_exposure = pdfplumber.regional_exposure
+            if self.verbose:
+                print("      → Filled regional_exposure from pdfplumber fallback")
+
+        # Sector Exposure
+        if not merged.sector_exposure and pdfplumber.sector_exposure:
+            merged.sector_exposure = pdfplumber.sector_exposure
+            if self.verbose:
+                print("      → Filled sector_exposure from pdfplumber fallback")
+
+        # Tops/Flops
+        if not merged.tops and pdfplumber.tops:
+            merged.tops = pdfplumber.tops
+            if self.verbose:
+                print("      → Filled tops from pdfplumber fallback")
+
+        if not merged.flops and pdfplumber.flops:
+            merged.flops = pdfplumber.flops
+            if self.verbose:
+                print("      → Filled flops from pdfplumber fallback")
+
+        # Performance
+        if not merged.performance and pdfplumber.performance:
+            merged.performance = pdfplumber.performance
+            if self.verbose:
+                print("      → Filled performance from pdfplumber fallback")
+
+        # P&L Overview
+        if merged.pnl_overview.total_pnl_value == 0 and pdfplumber.pnl_overview.total_pnl_value != 0:
+            merged.pnl_overview = pdfplumber.pnl_overview
+            if self.verbose:
+                print("      → Filled pnl_overview from pdfplumber fallback")
+
+        # P&L Detail
+        if merged.pnl_detail.total_pnl == 0 and pdfplumber.pnl_detail.total_pnl != 0:
+            merged.pnl_detail = pdfplumber.pnl_detail
+            if self.verbose:
+                print("      → Filled pnl_detail from pdfplumber fallback")
+
+        # Transactions
+        if not merged.transactions and pdfplumber.transactions:
+            merged.transactions = pdfplumber.transactions
+            if self.verbose:
+                print("      → Filled transactions from pdfplumber fallback")
+
+        return merged
+
+    def _count_non_empty_sections(self, portfolio: PortfolioData) -> int:
+        """Count how many sections have data."""
+        count = 0
+
+        if portfolio.positions:
+            count += 1
+        if portfolio.asset_allocation:
+            count += 1
+        if portfolio.currency_exposure:
+            count += 1
+        if portfolio.regional_exposure:
+            count += 1
+        if portfolio.sector_exposure:
+            count += 1
+        if portfolio.tops:
+            count += 1
+        if portfolio.flops:
+            count += 1
+        if portfolio.performance:
+            count += 1
+        if portfolio.transactions:
+            count += 1
+        if portfolio.pnl_overview.total_pnl_value != 0:
+            count += 1
+
+        return count
 
 
 # ────────────────────────────────────────────────────────────────────────────

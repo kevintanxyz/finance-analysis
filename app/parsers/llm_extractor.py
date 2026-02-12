@@ -63,6 +63,69 @@ Return ONLY valid JSON matching this exact schema:
 
   "currency_exposure": [
     {"currency": "CHF|USD|EUR|...", "pct": 0.00, "value": 0.00}
+  ],
+
+  "regional_exposure": [
+    {"region": "str", "pct": 0.00, "value": 0.00}
+  ],
+
+  "sector_exposure": [
+    {"sector": "str", "pct": 0.00, "value": 0.00}
+  ],
+
+  "tops": [
+    {"name": "str", "currency": "CHF|USD|EUR|...", "pct": 0.00}
+  ],
+
+  "flops": [
+    {"name": "str", "currency": "CHF|USD|EUR|...", "pct": 0.00}
+  ],
+
+  "performance": [
+    {
+      "from_date": "DD/MM/YYYY",
+      "to_date": "DD/MM/YYYY",
+      "start_value": 0.00,
+      "end_value": 0.00,
+      "deposits": 0.00,
+      "withdrawals": 0.00,
+      "profit_loss": 0.00,
+      "cum_pnl": 0.00,
+      "performance_pct": 0.00,
+      "cum_perf_pct": 0.00
+    }
+  ],
+
+  "pnl_overview": {
+    "assets_end": 0.00,
+    "deposits_cash": 0.00,
+    "withdrawals_cash": 0.00,
+    "total_deposits_withdrawals": 0.00,
+    "total_pnl_pct": 0.00,
+    "total_pnl_value": 0.00
+  },
+
+  "pnl_detail": {
+    "unrealized_market_pnl": 0.00,
+    "unrealized_fx_pnl": 0.00,
+    "unrealized_interests": 0.00,
+    "realized_dividends": 0.00,
+    "portfolio_management_fees": 0.00,
+    "total_bank_fees": 0.00,
+    "withholding_taxes": 0.00,
+    "total_pnl": 0.00
+  },
+
+  "transactions": [
+    {
+      "date": "DD/MM/YYYY",
+      "instrument": "str",
+      "operation_type": "Buy|Sell|Subscription|Redemption",
+      "amount": 0.00,
+      "price": 0.00,
+      "settlement_ccy": "CHF|USD|EUR|...",
+      "op_value": 0.00
+    }
   ]
 }
 
@@ -70,18 +133,23 @@ Return ONLY valid JSON matching this exact schema:
 1. Extract ALL positions, even without ISINs
 2. **reference_currency**: Extract from document header (e.g., "Portfolio CHF", "Portfolio USD")
 3. **value**: Position value in reference_currency (NOT always CHF!)
-4. If field not found → null (never guess/invent)
-4. For bonds: extract maturity_date and coupon_rate if available
-5. For equities: infer ticker if possible (e.g., ISIN CH0012032048 → ROG.SW)
-6. Verify: sum of position values ≈ total_value (±1% tolerance)
-7. Asset class inference:
+4. **IMPORTANT**: If a section is not found in the document, return empty arrays [] or zero values, but ALWAYS include the field
+5. For bonds: extract maturity_date and coupon_rate if available
+6. For equities: infer ticker if possible (e.g., ISIN CH0012032048 → ROG.SW)
+7. Verify: sum of position values ≈ total_value (±1% tolerance)
+8. Asset class inference:
    - Bonds: Look for coupon rates (e.g., "4.85%"), maturity years (e.g., "2033")
    - Equities: Company names ending in AG, Inc, SE, SA, GmbH, Ltd
    - ETFs: Names containing "ETF", "UCITS", "Index"
    - Funds: Names containing "Fund", "Fonds", "FCP"
    - Structured: Names with "Note", "Certificate"
-8. Swiss number format: use apostrophe (2'988.44) or period (2988.44) as thousand separator
-9. Percentages: already in 0-100 range (e.g., 10.5 means 10.5%)
+9. Swiss number format: use apostrophe (2'988.44) or period (2988.44) as thousand separator
+10. Percentages: already in 0-100 range (e.g., 10.5 means 10.5%)
+11. **TOPS/FLOPS**: Look for sections titled "Tops, Perf. YTD" or "Best performers" and "Flops, Perf. YTD" or "Worst performers"
+12. **PERFORMANCE**: Look for tables with columns like "From", "To", "Start Value", "End Value", "Performance", etc.
+13. **EXPOSURES**: Look for sections titled "Currencies", "Regions", "Sectors" with breakdown tables
+14. **P&L**: Look for "PROFIT & LOSS" sections with overview and detailed breakdown
+15. **TRANSACTIONS**: Look for "TRANSACTIONS" sections with buy/sell/subscription history
 
 **IMPORTANT**: Return ONLY the JSON object. No markdown code blocks, no explanation text.
 """
@@ -282,6 +350,11 @@ class LLMPDFExtractor:
         Returns:
             Validated PortfolioData object
         """
+        from app.models.portfolio import (
+            AllocationItem, ExposureItem, TopFlop, PerformancePeriod,
+            PnLOverview, PnLDetail, Transaction
+        )
+
         isin_ticker_map = isin_ticker_map or {}
 
         # Parse positions
@@ -327,14 +400,138 @@ class LLMPDFExtractor:
             )
             positions.append(position)
 
-        # Build PortfolioData (simplified, only core fields)
-        # Full implementation would parse allocation, exposure, etc.
+        # Parse asset allocation (convert from nested dict to list)
+        asset_allocation = []
+        allocation_dict = data.get("allocation", {})
+        if allocation_dict:
+            for asset_class_key, values in allocation_dict.items():
+                if values and isinstance(values, dict):
+                    asset_allocation.append(AllocationItem(
+                        asset_class=asset_class_key.replace("_", " ").title(),  # "structured_products" → "Structured Products"
+                        value_chf=values.get("value", 0.0),
+                        weight_pct=values.get("pct", 0.0),
+                    ))
+
+        # Parse currency exposure
+        currency_exposure = [
+            ExposureItem(
+                name=exp.get("currency", ""),
+                value_chf=exp.get("value", 0.0),
+                weight_pct=exp.get("pct", 0.0),
+            )
+            for exp in data.get("currency_exposure", [])
+        ]
+
+        # Parse regional exposure
+        regional_exposure = [
+            ExposureItem(
+                name=exp.get("region", ""),
+                value_chf=exp.get("value", 0.0),
+                weight_pct=exp.get("pct", 0.0),
+            )
+            for exp in data.get("regional_exposure", [])
+        ]
+
+        # Parse sector exposure
+        sector_exposure = [
+            ExposureItem(
+                name=exp.get("sector", ""),
+                value_chf=exp.get("value", 0.0),
+                weight_pct=exp.get("pct", 0.0),
+            )
+            for exp in data.get("sector_exposure", [])
+        ]
+
+        # Parse tops/flops
+        tops = [
+            TopFlop(
+                name=t.get("name", ""),
+                currency=t.get("currency", "CHF"),
+                pct=t.get("pct", 0.0),
+            )
+            for t in data.get("tops", [])
+        ]
+
+        flops = [
+            TopFlop(
+                name=f.get("name", ""),
+                currency=f.get("currency", "CHF"),
+                pct=f.get("pct", 0.0),
+            )
+            for f in data.get("flops", [])
+        ]
+
+        # Parse performance periods
+        performance = [
+            PerformancePeriod(
+                from_date=p.get("from_date", ""),
+                to_date=p.get("to_date", ""),
+                start_value=p.get("start_value", 0.0),
+                end_value=p.get("end_value", 0.0),
+                deposits=p.get("deposits", 0.0),
+                withdrawals=p.get("withdrawals", 0.0),
+                profit_loss=p.get("profit_loss", 0.0),
+                cum_pnl=p.get("cum_pnl", 0.0),
+                performance_pct=p.get("performance_pct", 0.0),
+                cum_perf_pct=p.get("cum_perf_pct", 0.0),
+            )
+            for p in data.get("performance", [])
+        ]
+
+        # Parse P&L overview
+        pnl_overview_dict = data.get("pnl_overview", {})
+        pnl_overview = PnLOverview(
+            assets_end=pnl_overview_dict.get("assets_end", 0.0),
+            deposits_cash=pnl_overview_dict.get("deposits_cash", 0.0),
+            withdrawals_cash=pnl_overview_dict.get("withdrawals_cash", 0.0),
+            total_deposits_withdrawals=pnl_overview_dict.get("total_deposits_withdrawals", 0.0),
+            total_pnl_pct=pnl_overview_dict.get("total_pnl_pct", 0.0),
+            total_pnl_value=pnl_overview_dict.get("total_pnl_value", 0.0),
+        )
+
+        # Parse P&L detail
+        pnl_detail_dict = data.get("pnl_detail", {})
+        pnl_detail = PnLDetail(
+            unrealized_market_pnl=pnl_detail_dict.get("unrealized_market_pnl", 0.0),
+            unrealized_fx_pnl=pnl_detail_dict.get("unrealized_fx_pnl", 0.0),
+            unrealized_interests=pnl_detail_dict.get("unrealized_interests", 0.0),
+            realized_dividends=pnl_detail_dict.get("realized_dividends", 0.0),
+            portfolio_management_fees=pnl_detail_dict.get("portfolio_management_fees", 0.0),
+            total_bank_fees=pnl_detail_dict.get("total_bank_fees", 0.0),
+            withholding_taxes=pnl_detail_dict.get("withholding_taxes", 0.0),
+            total_pnl=pnl_detail_dict.get("total_pnl", 0.0),
+        )
+
+        # Parse transactions
+        transactions = [
+            Transaction(
+                date=t.get("date", ""),
+                instrument=t.get("instrument", ""),
+                operation_type=t.get("operation_type", ""),
+                amount=t.get("amount", 0.0),
+                price=t.get("price", 0.0),
+                settlement_ccy=t.get("settlement_ccy", "CHF"),
+                op_value=t.get("op_value", 0.0),
+            )
+            for t in data.get("transactions", [])
+        ]
+
+        # Build complete PortfolioData
         portfolio_data = PortfolioData(
             valuation_date=data.get("valuation_date", ""),
+            extraction_date=data.get("valuation_date", ""),  # Same as valuation date
             total_value_chf=data.get("total_value", 0.0),
             positions=positions,
-            # TODO: Parse allocation, exposure from data
-            # For now, return minimal structure
+            asset_allocation=asset_allocation,
+            currency_exposure=currency_exposure,
+            regional_exposure=regional_exposure,
+            sector_exposure=sector_exposure,
+            tops=tops,
+            flops=flops,
+            performance=performance,
+            pnl_overview=pnl_overview,
+            pnl_detail=pnl_detail,
+            transactions=transactions,
         )
 
         return portfolio_data
