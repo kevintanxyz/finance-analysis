@@ -1,4 +1,4 @@
-# NUMAN - Portfolio Intelligence Platform
+# WealthPoint - Portfolio Intelligence Platform
 
 AI-powered portfolio analysis for family offices via Model Context Protocol (MCP).
 
@@ -8,7 +8,7 @@ AI-powered portfolio analysis for family offices via Model Context Protocol (MCP
 
 ## Overview
 
-NUMAN is a portfolio analysis platform that ingests PDF valuation statements and provides intelligent analysis through:
+WealthPoint is a portfolio analysis platform that ingests PDF valuation statements and provides intelligent analysis through:
 - 8 specialized AI agents (Market Researcher, Quant Analyst, Strategy Advisor, Compliance Officer, etc.)
 - Natural language Q&A (French and English accepted, responses in English)
 - Risk metrics, momentum indicators, correlation analysis
@@ -87,7 +87,7 @@ finance-analysis/
 │   │   └── portfolio.py       # Pydantic models (PortfolioData, Position, ...)
 │   ├── parsers/
 │   │   ├── __init__.py        # detect_pdf_type(), parse_pdf()
-│   │   └── valuation_pdf.py   # NUMAN PDF parser (⚠️ needs refactoring)
+│   │   └── valuation_pdf.py   # WealthPoint PDF parser (⚠️ needs refactoring)
 │   ├── analysis/              # [Phase 2] Calculators
 │   │   ├── risk_calculator.py
 │   │   ├── momentum.py
@@ -132,7 +132,7 @@ cp .env.example .env
 
 Required environment variables:
 - `ANTHROPIC_API_KEY` — Claude API key (get from https://console.anthropic.com)
-- `DATABASE_URL` — SQLite path (default: `sqlite:///./numan.db`)
+- `DATABASE_URL` — SQLite path (default: `sqlite:///./wealthpoint.db`)
 
 Optional:
 - `OLLAMA_MODEL` — Ollama model for fallback (default: `llama3.1`)
@@ -174,20 +174,20 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "numan-portfolio": {
+    "wealthpoint-analysis": {
       "command": "python",
       "args": ["-m", "mcp_server.server"],
       "cwd": "/path/to/finance-analysis",
       "env": {
         "ANTHROPIC_API_KEY": "sk-ant-...",
-        "DATABASE_URL": "sqlite:///./numan.db"
+        "DATABASE_URL": "sqlite:///./wealthpoint.db"
       }
     }
   }
 }
 ```
 
-Restart Claude Desktop. The NUMAN tools will appear in the tool selection.
+Restart Claude Desktop. The WealthPoint tools will appear in the tool selection.
 
 ### React Frontend (Phase 5)
 

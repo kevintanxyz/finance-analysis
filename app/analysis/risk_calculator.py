@@ -1,5 +1,5 @@
 """
-Risk Metrics Calculator for NUMAN Portfolio Intelligence
+Risk Metrics Calculator for WealthPoint Analysis Intelligence
 
 Adapted from Finance Guru™ src/analysis/risk_metrics.py
 Implements comprehensive risk calculations with validated Pydantic models.
@@ -28,6 +28,8 @@ RISK METRICS IMPLEMENTED:
 8. Beta - Market sensitivity
 9. Alpha - Excess return vs benchmark
 """
+
+from __future__ import annotations
 
 import warnings
 from datetime import date, timedelta

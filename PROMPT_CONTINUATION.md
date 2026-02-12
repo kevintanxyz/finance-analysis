@@ -1,4 +1,4 @@
-# PROMPT — NUMAN Portfolio Intelligence Platform
+# PROMPT — WealthPoint Analysis Intelligence Platform
 
 > Colle ce fichier dans ton IDE (Cursor, Windsurf, Claude Code) à la racine du projet.
 > Il contient tout le contexte pour construire la plateforme.
@@ -16,9 +16,9 @@
 
 ## 1. VISION DU PROJET
 
-On construit **NUMAN** — une plateforme d'analyse de portefeuille multi-client (family office) qui :
+On construit **WealthPoint** — une plateforme d'analyse de portefeuille multi-client (family office) qui :
 
-1. **Ingère** des PDFs de valorisation bancaire (format NUMAN/Rothschild, extensible à UBS, Julius Baer, etc.)
+1. **Ingère** des PDFs de valorisation bancaire (format WealthPoint/Rothschild, extensible à UBS, Julius Baer, etc.)
 2. **Structure** les données financières (positions, allocation, P&L, expositions, risque)
 3. **Analyse** via 8 agents IA spécialisés (repris de Finance-Guru)
 4. **Répond** aux questions en langage naturel (FR/EN) via LLM (Claude + Ollama fallback)
@@ -34,7 +34,7 @@ On construit **NUMAN** — une plateforme d'analyse de portefeuille multi-client
                             │ MCP Protocol (stdio / Streamable HTTP)
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  MCP SERVER  (mcp-server-numan)                             │
+│  MCP SERVER  (mcp-server-wealthpoint)                             │
 │                                                             │
 │  Tools:     upload_pdf, ask_portfolio, analyze_risk, ...    │
 │  Resources: portfolio://{id}, positions://{id}, ...         │
@@ -93,7 +93,7 @@ portfolio-api/
 │   │   └── portfolio.py        # Pydantic: PortfolioData, Position, MarketAnalysis...
 │   ├── parsers/
 │   │   ├── __init__.py         # detect_pdf_type(), extract_raw_text(), parse_pdf()
-│   │   └── valuation_pdf.py    # Parser NUMAN (positions HARDCODÉES — à refactorer)
+│   │   └── valuation_pdf.py    # Parser WealthPoint (positions HARDCODÉES — à refactorer)
 │   ├── routers/
 │   │   └── portfolio.py        # Endpoints REST
 │   └── services/
@@ -344,7 +344,7 @@ PDF Upload
 | Vitesse | Instantané | 2-5 sec par page |
 | Fiabilité | 70-80% (nouveaux formats) | 95%+ |
 
-**Trade-off** : On utilise pdfplumber d'abord (gratuit, rapide) et Claude Vision en complément/validation. Pour les formats connus (NUMAN), pdfplumber suffit. Pour les nouveaux formats, Claude Vision prend le relais.
+**Trade-off** : On utilise pdfplumber d'abord (gratuit, rapide) et Claude Vision en complément/validation. Pour les formats connus (WealthPoint), pdfplumber suffit. Pour les nouveaux formats, Claude Vision prend le relais.
 
 ### 4bis.3 Prompt d'extraction Claude Vision
 
@@ -474,8 +474,8 @@ class PDFParserRouter:
 # app/parsers/bank_configs.py
 
 BANK_CONFIGS = {
-    "numan": {
-        "detect_keywords": ["NUMAN", "Rothschild", "Edmond de Rothschild"],
+    "wealthpoint": {
+        "detect_keywords": ["WealthPoint", "Rothschild", "Edmond de Rothschild"],
         "parser": "pdfplumber",       # Format connu → pdfplumber suffit
         "table_settings": {
             "vertical_strategy": "lines",
@@ -566,7 +566,7 @@ async def calculate_risk(session_id: str, ticker: str = None) -> dict:
 ## 5. ARCHITECTURE CIBLE
 
 ```
-numan-platform/
+wealthpoint-platform/
 ├── finance-guru-ref/               # CLONÉ — repo Finance-Guru LECTURE SEULE (référence)
 │   ├── src/                        #   → Outils d'analyse à reprendre
 │   ├── fin-guru/                   #   → Agents, prompts, knowledge base
@@ -594,7 +594,7 @@ numan-platform/
 │   │   ├── __init__.py             # PDFParserRouter : detect bank → route strategy
 │   │   ├── pdfplumber_extractor.py # Extraction tables/texte via pdfplumber + Camelot fallback
 │   │   ├── llm_extractor.py        # NEW: Claude Vision API → JSON structuré
-│   │   ├── bank_configs.py         # NEW: Config par banque (NUMAN, UBS, Julius Baer, generic)
+│   │   ├── bank_configs.py         # NEW: Config par banque (WealthPoint, UBS, Julius Baer, generic)
 │   │   ├── cross_validator.py      # NEW: Validation croisée pdfplumber vs LLM
 │   │   └── base_parser.py          # Abstract base pour futurs formats
 │   │
@@ -710,7 +710,7 @@ async def upload_portfolio(pdf_base64: str, filename: str = "valuation.pdf",
     The PDF must be sent as a base64-encoded string.
     Returns session_id to use in all subsequent tool calls.
     
-    Supports multiple bank formats (NUMAN/Rothschild, UBS, Julius Baer, etc.)
+    Supports multiple bank formats (WealthPoint/Rothschild, UBS, Julius Baer, etc.)
     Uses hybrid extraction: pdfplumber (fast) + Claude Vision (intelligent).
     """
     pdf_bytes = base64.b64decode(pdf_base64)
@@ -733,14 +733,14 @@ Dans Finance-Guru, les agents sont des system prompts que Claude charge tour à 
 Finance-Guru (ancien) :
   User → Claude Code → charge system prompt "Quant" → lance CLI → résultat
 
-NUMAN (MCP) :
+WealthPoint (MCP) :
   User → Claude Desktop → voit les tools disponibles → appelle analyze_risk()
                         → appelle analyze_correlation() → synthétise la réponse
 ```
 
 ### 7.2 Mapping agents → MCP tools
 
-| Agent Finance-Guru | MCP Tools NUMAN |
+| Agent Finance-Guru | MCP Tools WealthPoint |
 |---------------------|-----------------|
 | Orchestrator (Cassandra) | **Le LLM client fait l'orchestration** — plus besoin d'agent interne |
 | Market Researcher | `get_market_data`, `ask_portfolio` (questions marché) |
@@ -918,7 +918,7 @@ CREATE TABLE analysis_cache (
 12. **MCP Prompts** : Templates portfolio-summary, risk-report, rebalance-plan, morning-briefing.
 13. **Tools d'analyse** : Brancher les calculateurs Phase 2 comme MCP tools (analyze_risk, analyze_momentum, analyze_correlation).
 14. **Transport Streamable HTTP** : Pour que le frontend React puisse se connecter (port 3001).
-15. **Test avec Claude Desktop** : Configurer claude_desktop_config.json avec les 4 serveurs (numan + exa + bright-data + sequential-thinking) et valider end-to-end.
+15. **Test avec Claude Desktop** : Configurer claude_desktop_config.json avec les 4 serveurs (wealthpoint + exa + bright-data + sequential-thinking) et valider end-to-end.
 
 ### Phase 4 — Agents complets (via MCP tools)
 
@@ -969,7 +969,7 @@ OLLAMA_MODEL=llama3.1
 OLLAMA_URL=http://localhost:11434
 
 # Database
-DATABASE_URL=sqlite:///./numan.db
+DATABASE_URL=sqlite:///./wealthpoint.db
 
 # API
 API_KEY=your-api-key-here       # Simple auth v1
@@ -992,7 +992,7 @@ YFINANCE_CACHE_TTL=300          # Cache 5 minutes
 
 ```gitignore
 finance-guru-ref/               # Repo cloné — référence uniquement, pas commité
-numan.db
+wealthpoint.db
 *.pyc
 __pycache__/
 .env
@@ -1002,7 +1002,7 @@ __pycache__/
 
 ## 13. SERVEUR MCP — COUCHE D'EXPOSITION
 
-Le serveur MCP est la **façade** du système. Il expose les capacités de NUMAN sous forme de **Tools**, **Resources** et **Prompts** MCP. N'importe quel client compatible (Claude Desktop, Claude Code, Cursor, React app, etc.) peut s'y connecter.
+Le serveur MCP est la **façade** du système. Il expose les capacités de WealthPoint sous forme de **Tools**, **Resources** et **Prompts** MCP. N'importe quel client compatible (Claude Desktop, Claude Code, Cursor, React app, etc.) peut s'y connecter.
 
 ### 13.1 Stack MCP
 
@@ -1011,7 +1011,7 @@ Le serveur MCP est la **façade** du système. Il expose les capacités de NUMAN
 # pip install "mcp[cli]"
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP("numan-portfolio")
+mcp = FastMCP("wealthpoint-analysis")
 ```
 
 **Dépendances clés** :
@@ -1038,7 +1038,7 @@ Chaque tool correspond à une action. Le LLM client décide quel(s) tool(s) appe
 # mcp_server/tools.py
 from mcp.server.fastmcp import FastMCP, Context
 
-mcp = FastMCP("numan-portfolio")
+mcp = FastMCP("wealthpoint-analysis")
 
 # ── Upload & Parse ───────────────────────────────────────────
 @mcp.tool()
@@ -1257,7 +1257,7 @@ def morning_briefing(session_id: str) -> str:
 from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP(
-    "numan-portfolio",
+    "wealthpoint-analysis",
     description="AI-powered portfolio analysis for family offices. "
                 "Upload valuation PDFs, ask questions, get risk/momentum analysis, "
                 "compliance checks, and strategy recommendations.",
@@ -1285,9 +1285,9 @@ mcp dev mcp_server/server.py
 
 ### 13.6 MCP Servers externes requis
 
-NUMAN fonctionne en **constellation de MCP servers** — notre server est le cœur, mais il s'appuie sur 3 MCP servers externes pour le Market Researcher agent :
+WealthPoint fonctionne en **constellation de MCP servers** — notre server est le cœur, mais il s'appuie sur 3 MCP servers externes pour le Market Researcher agent :
 
-| MCP Server | Package | Rôle dans NUMAN | API Key requise |
+| MCP Server | Package | Rôle dans WealthPoint | API Key requise |
 |------------|---------|-----------------|-----------------|
 | **Exa** | `exa-mcp-server` | Market research, intelligence gathering, recherche web sémantique (news financières, analyses, company research) | `EXA_API_KEY` |
 | **Bright Data** | `@brightdata/mcp` | Web scraping, extraction de données alternatives, données live (prix temps réel, filings SEC, rapports annuels) | `BRIGHTDATA_API_TOKEN` |
@@ -1298,13 +1298,13 @@ NUMAN fonctionne en **constellation de MCP servers** — notre server est le cœ
 ```json
 {
   "mcpServers": {
-    "numan-portfolio": {
+    "wealthpoint-analysis": {
       "command": "python",
       "args": ["-m", "mcp_server.server"],
-      "cwd": "/path/to/numan-platform",
+      "cwd": "/path/to/wealthpoint-platform",
       "env": {
         "ANTHROPIC_API_KEY": "sk-ant-...",
-        "DATABASE_URL": "sqlite:///./numan.db"
+        "DATABASE_URL": "sqlite:///./wealthpoint.db"
       }
     },
     "exa": {
@@ -1337,24 +1337,24 @@ Quand un utilisateur demande une analyse complexe, le LLM client (Claude) peut c
 User: "Roche a beaucoup monté, est-ce le bon moment pour prendre des profits ?"
 
 Claude orchestre:
-  1. [numan]       analyze_risk("ROG.SW")         → VaR, Sharpe, Beta
-  2. [numan]       analyze_momentum("ROG.SW")     → RSI overbought, MACD bearish divergence
+  1. [wealthpoint]       analyze_risk("ROG.SW")         → VaR, Sharpe, Beta
+  2. [wealthpoint]       analyze_momentum("ROG.SW")     → RSI overbought, MACD bearish divergence
   3. [exa]         web_search("Roche Q4 earnings outlook 2025")  → News financières récentes
   4. [exa]         company_search("Roche Holding")  → Données fondamentales
   5. [bright-data] scrape_as_text("https://finance.yahoo.com/quote/ROG.SW")  → Prix live
   6. [sequential]  sequentialthinking(...)          → Raisonnement structuré multi-critères
-  7. [numan]       check_compliance(session_id)     → Impact sur la concentration du portefeuille
+  7. [wealthpoint]       check_compliance(session_id)     → Impact sur la concentration du portefeuille
   
 Claude synthétise → Réponse complète avec recommandation argumentée
 ```
 
 #### Impact sur l'architecture
 
-Ces serveurs externes sont **indépendants** de notre code — ils se configurent côté client (Claude Desktop, Cursor, etc.). Mais nos MCP tools NUMAN doivent être conçus pour que leurs résultats se combinent bien avec les données provenant d'Exa et Bright Data.
+Ces serveurs externes sont **indépendants** de notre code — ils se configurent côté client (Claude Desktop, Cursor, etc.). Mais nos MCP tools WealthPoint doivent être conçus pour que leurs résultats se combinent bien avec les données provenant d'Exa et Bright Data.
 
 En pratique :
-- Les tools NUMAN retournent des **données structurées** (JSON avec des clés standardisées)
-- Les descriptions des tools NUMAN mentionnent explicitement quand utiliser Exa/Bright Data en complément
+- Les tools WealthPoint retournent des **données structurées** (JSON avec des clés standardisées)
+- Les descriptions des tools WealthPoint mentionnent explicitement quand utiliser Exa/Bright Data en complément
 - Le tool `ask_portfolio` peut suggérer au LLM de consulter Exa pour des news récentes
 
 ### 13.7 Flow complet : Prompt → Multi-MCP → Réponse
@@ -1389,7 +1389,7 @@ MCP Client (Claude Desktop / React Chat):
 
 ## 14. OBJECTIF FINAL — CHAT INTERFACE REACT
 
-Le produit final est un **chat conversationnel** React qui communique avec le MCP server via Streamable HTTP. L'utilisateur discute avec NUMAN comme avec un conseiller financier. L'interface est intelligente : elle affiche du **texte** quand la réponse est textuelle, et des **visualisations** (tableaux, graphiques, pie charts, etc.) quand la réponse contient de la data.
+Le produit final est un **chat conversationnel** React qui communique avec le MCP server via Streamable HTTP. L'utilisateur discute avec WealthPoint comme avec un conseiller financier. L'interface est intelligente : elle affiche du **texte** quand la réponse est textuelle, et des **visualisations** (tableaux, graphiques, pie charts, etc.) quand la réponse contient de la data.
 
 ### 14.1 Principe : Response Types
 
@@ -1569,7 +1569,7 @@ const useChat = () => {
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  NUMAN Chat                                     [📎 PDF ↑] │
+│  WealthPoint Chat                                     [📎 PDF ↑] │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  👤 [glisse valuation.pdf]                                  │
@@ -1622,7 +1622,7 @@ const useChat = () => {
 3. **Le backend décide du format** — le frontend ne fait que rendre ce qu'on lui envoie
 4. **Responsive** — les charts s'adaptent à la largeur du chat
 5. **Interactif** — les tableaux sont triables, les charts ont des tooltips
-6. **Thème** — palette verte/dorée cohérente avec les PDFs NUMAN (couleurs extraites du PDF sample)
+6. **Thème** — palette verte/dorée cohérente avec les PDFs WealthPoint (couleurs extraites du PDF sample)
 
 ---
 

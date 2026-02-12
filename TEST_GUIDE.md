@@ -36,7 +36,7 @@ uv run python test_components.py
 ### Obtenir un PDF de test
 
 Vous avez besoin d'un relevé de portefeuille (n'importe quel format):
-- **NUMAN/Rothschild** ✅
+- **WealthPoint/Rothschild** ✅
 - **UBS** ✅
 - **Julius Baer** ✅
 - **Credit Suisse** ✅
@@ -287,7 +287,7 @@ Une fois le test réussi:
    - Test end-to-end avec Claude Desktop
 
 2. **Tester plusieurs formats**:
-   - NUMAN, UBS, Julius Baer, etc.
+   - WealthPoint, UBS, Julius Baer, etc.
    - Vérifier la détection automatique
 
 3. **Phase 2**: Implémenter les analysis tools

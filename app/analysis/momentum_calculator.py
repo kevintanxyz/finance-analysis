@@ -1,5 +1,5 @@
 """
-Momentum Indicators Calculator for NUMAN Portfolio Intelligence
+Momentum Indicators Calculator for WealthPoint Analysis Intelligence
 
 Adapted from Finance Guru™ momentum.py
 Implements comprehensive momentum indicator calculations.
@@ -23,7 +23,10 @@ IMPROVEMENTS OVER FINANCE-GURU:
 - Simplified for portfolio analysis use case
 """
 
+from __future__ import annotations
+
 import pandas as pd
+import numpy as np
 from datetime import date, timedelta
 from typing import Literal
 
@@ -95,6 +98,10 @@ class MomentumIndicators:
 
         # Get current RSI
         current_rsi = float(rsi.iloc[-1])
+
+        # Handle edge case: flat prices produce NaN (no gains or losses)
+        if np.isnan(current_rsi):
+            current_rsi = 50.0  # Neutral RSI for flat prices
 
         # Determine signal
         if current_rsi > 70:

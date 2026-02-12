@@ -18,7 +18,7 @@ Phase 3 additions:
 - More granular resources as needed
 """
 import json
-from mcp_server.server import mcp
+from mcp_server import mcp
 from app.database import get_session, Client, Portfolio
 
 

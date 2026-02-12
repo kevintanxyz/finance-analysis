@@ -1,5 +1,5 @@
 """
-LLM abstraction layer for NUMAN.
+LLM abstraction layer for WealthPoint.
 
 Supports:
 - Claude (Anthropic API) as primary LLM

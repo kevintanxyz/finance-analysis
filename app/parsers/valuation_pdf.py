@@ -1,5 +1,5 @@
 """
-PDF Parser for NUMAN-style portfolio valuation statements.
+PDF Parser for WealthPoint-style portfolio valuation statements.
 
 Extracts structured financial data from PDF valuation reports including:
 - Mandate/portfolio details
@@ -88,7 +88,7 @@ def _get_page_text(pdf: pdfplumber.PDF, page_idx: int) -> str:
 
 
 class ValuationPDFParser:
-    """Parser for NUMAN-style portfolio valuation PDFs."""
+    """Parser for WealthPoint-style portfolio valuation PDFs."""
 
     def __init__(self, pdf_path: str):
         self.pdf_path = pdf_path

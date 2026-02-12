@@ -1,7 +1,7 @@
 """
 Generic PDF parser with LLM fallback.
 
-For known PDF formats (NUMAN valuation), uses the dedicated parser.
+For known PDF formats (WealthPoint valuation), uses the dedicated parser.
 For unknown formats, extracts raw text + tables and uses LLM to structure.
 """
 from __future__ import annotations
@@ -19,9 +19,9 @@ def detect_pdf_type(pdf_path: str) -> str:
             (page.extract_text() or "") for page in pdf.pages[:3]
         )
 
-    # NUMAN valuation format
+    # WealthPoint valuation format
     if "STATEMENT OF ASSETS" in first_pages and "ASSET ALLOCATION" in first_pages:
-        return "numan_valuation"
+        return "wealthpoint_valuation"
 
     # Add more format detections here
     # if "SOME OTHER PATTERN" in first_pages:
@@ -66,7 +66,7 @@ def parse_pdf(pdf_path: str) -> PortfolioData:
     """
     pdf_type = detect_pdf_type(pdf_path)
 
-    if pdf_type == "numan_valuation":
+    if pdf_type == "wealthpoint_valuation":
         parser = ValuationPDFParser(pdf_path)
         return parser.parse()
 

@@ -8,9 +8,9 @@
 
 ## Overview
 
-NUMAN now features **Claude Vision-powered PDF extraction** with intelligent bank format detection:
+WealthPoint now features **Claude Vision-powered PDF extraction** with intelligent bank format detection:
 
-1. **Multi-format support** — Works with any bank PDF (NUMAN, UBS, Julius Baer, unknown formats)
+1. **Multi-format support** — Works with any bank PDF (WealthPoint, UBS, Julius Baer, unknown formats)
 2. **Claude Vision API** — Sends PDF pages as images for intelligent extraction
 3. **Automatic bank detection** — Routes to optimal parsing strategy
 4. **Cross-validation** — Verifies extraction quality
@@ -51,7 +51,7 @@ This architecture **eliminates the need to write custom parsers for each bank fo
 ┌──────────────────────────────────────────────────────────┐
 │  Layer 1: Bank Detection (pdfplumber)                    │
 │  - Extract text from first 3 pages                       │
-│  - Match keywords (NUMAN, UBS, Julius Baer, etc.)        │
+│  - Match keywords (WealthPoint, UBS, Julius Baer, etc.)        │
 │  - Return BankConfig with parsing strategy               │
 │  Result: bank_configs.py → BankConfig                    │
 └────────────────────────┬─────────────────────────────────┘
@@ -85,7 +85,7 @@ PDF Upload
     ├─→ Extract text (first 3 pages)
     │
     ├─→ Detect bank (match keywords)
-    │   ├─→ NUMAN → BankConfig(parser="pdfplumber")  [disabled in MVP]
+    │   ├─→ WealthPoint → BankConfig(parser="pdfplumber")  [disabled in MVP]
     │   ├─→ UBS → BankConfig(parser="llm_vision")
     │   ├─→ Julius Baer → BankConfig(parser="llm_vision")
     │   └─→ Unknown → BankConfig(parser="llm_vision")
@@ -99,7 +99,7 @@ PDF Upload
 ```
 
 **Production mode** (future):
-- Known formats (NUMAN) → pdfplumber first (fast, free)
+- Known formats (WealthPoint) → pdfplumber first (fast, free)
 - Unknown formats → Claude Vision
 - Hybrid → Both + choose best result
 
@@ -132,9 +132,9 @@ mcp_server/
 # app/parsers/bank_configs.py
 
 BANK_CONFIGS = {
-    "numan": BankConfig(
-        name="numan",
-        detect_keywords=["NUMAN", "Rothschild", "Edmond de Rothschild"],
+    "wealthpoint": BankConfig(
+        name="wealthpoint",
+        detect_keywords=["WealthPoint", "Rothschild", "Edmond de Rothschild"],
         parser="pdfplumber",  # Known format → fast extraction
         table_settings={"vertical_strategy": "lines", ...},
         confidence_threshold=0.85,
@@ -317,7 +317,7 @@ for correction in summary['corrections']:
 |------|------|------|----------|----------|
 | **Claude Vision only** | 6-8s | ~$0.05 | ~95% | MVP default, unknown formats |
 | **Claude Vision + LLM validation** | 12-15s | ~$0.10 | ~98% | Critical data, poor PDF quality |
-| **pdfplumber (future)** | <1s | $0 | ~85% | Known formats (NUMAN), high volume |
+| **pdfplumber (future)** | <1s | $0 | ~85% | Known formats (WealthPoint), high volume |
 
 ### Cost Breakdown
 
@@ -499,7 +499,7 @@ series = build_series_from_snapshots(client_id, position_name)
 
 | Feature | Basic (pdfplumber) | Claude Vision | Claude Vision + LLM |
 |---------|-------------------|---------------|---------------------|
-| **Multi-format** | ❌ Only NUMAN | ✅ Any bank | ✅ Any bank |
+| **Multi-format** | ❌ Only WealthPoint | ✅ Any bank | ✅ Any bank |
 | **Speed** | ⚡ <1s | 🐢 6-8s | 🐢 12-15s |
 | **Cost** | $0 | ~$0.05/PDF | ~$0.10/PDF |
 | **Accuracy** | ~75% (known) | ~95% (all) | ~98% (all) |

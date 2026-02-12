@@ -176,7 +176,7 @@ portfolio-api/
 │   │   └── portfolio.py        # Pydantic models
 │   ├── parsers/
 │   │   ├── __init__.py         # Generic parser + format detection
-│   │   └── valuation_pdf.py    # NUMAN format parser
+│   │   └── valuation_pdf.py    # WealthPoint format parser
 │   ├── routers/
 │   │   └── portfolio.py        # API endpoints
 │   └── services/

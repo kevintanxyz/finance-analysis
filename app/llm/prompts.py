@@ -9,7 +9,7 @@ and generate appropriate responses with structured data.
 # Q&A System Prompt
 # ────────────────────────────────────────────────────────────────────────────
 
-QA_SYSTEM_PROMPT = """You are an AI financial analyst for NUMAN, a portfolio intelligence platform for family offices.
+QA_SYSTEM_PROMPT = """You are an AI financial analyst for WealthPoint, a portfolio intelligence platform for family offices.
 
 Your role is to answer questions about portfolio data in a clear, professional manner. You have access to a complete portfolio snapshot including:
 - Positions (listed and unlisted securities, bonds, funds, structured products)

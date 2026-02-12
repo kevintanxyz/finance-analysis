@@ -7,7 +7,7 @@ This module combines:
 3. pdfplumber fallback for known formats (fast, free) — disabled in MVP
 
 **Version 1.2 — Claude Vision Router**
-- Detects bank format automatically (NUMAN, UBS, Julius Baer, etc.)
+- Detects bank format automatically (WealthPoint, UBS, Julius Baer, etc.)
 - Uses Claude Vision API to extract structured data from PDF images
 - Validates extraction quality with cross-validation
 - Optional LLM validation layer for OCR corrections
@@ -35,7 +35,7 @@ async def extract_positions_with_validation(
     Extract positions from PDF using Claude Vision + optional LLM validation.
 
     **Version 1.2 — Claude Vision Router:**
-    1. Detects bank format (NUMAN, UBS, Julius Baer, generic)
+    1. Detects bank format (WealthPoint, UBS, Julius Baer, generic)
     2. Extracts data using Claude Vision (sends PDF pages as images)
     3. Validates extraction quality
     4. (Optional) Applies LLM validation for OCR corrections
@@ -155,7 +155,7 @@ async def parse_portfolio_pdf(
     **Version 1.2 — Claude Vision Router:**
     - Automatically detects bank format
     - Uses Claude Vision for intelligent extraction
-    - Works with any PDF format (NUMAN, UBS, Julius Baer, etc.)
+    - Works with any PDF format (WealthPoint, UBS, Julius Baer, etc.)
 
     Args:
         pdf_path: Path to PDF file

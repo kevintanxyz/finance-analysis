@@ -1,4 +1,4 @@
-# Démarrer le Serveur MCP NUMAN
+# Démarrer le Serveur MCP WealthPoint
 
 **Date**: February 11, 2026
 
@@ -27,7 +27,7 @@ uv run python -m mcp_server.server
 ```json
 {
   "mcpServers": {
-    "numan-portfolio": {
+    "wealthpoint-analysis": {
       "command": "uv",
       "args": ["run", "python", "-m", "mcp_server.server"],
       "cwd": "/path/to/finance-analysis",
@@ -132,7 +132,7 @@ Le serveur supporte maintenant **tous les formats de PDF bancaires**:
 
 | Banque | Détection Auto | Stratégie |
 |--------|----------------|-----------|
-| **NUMAN/Rothschild** | ✅ Keywords | Claude Vision (MVP) |
+| **WealthPoint/Rothschild** | ✅ Keywords | Claude Vision (MVP) |
 | **UBS** | ✅ Keywords | Claude Vision |
 | **Julius Baer** | ✅ Keywords | Claude Vision |
 | **Credit Suisse** | ✅ Keywords | Claude Vision |
@@ -151,7 +151,7 @@ Votre `.env` doit contenir:
 ANTHROPIC_API_KEY=sk-ant-...
 
 # Database
-DATABASE_URL=sqlite:///./numan.db
+DATABASE_URL=sqlite:///./wealthpoint.db
 
 # Ollama (optionnel, fallback)
 OLLAMA_MODEL=llama3.1

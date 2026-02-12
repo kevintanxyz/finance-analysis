@@ -1,4 +1,4 @@
-# NUMAN - Quick Start Guide
+# WealthPoint - Quick Start Guide
 
 **For continuing implementation in next chat session**
 

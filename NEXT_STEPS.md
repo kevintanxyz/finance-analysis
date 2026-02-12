@@ -1,4 +1,4 @@
-# NUMAN - Next Steps for Implementation
+# WealthPoint - Next Steps for Implementation
 
 **Last Updated**: February 11, 2026 14:00
 
@@ -352,13 +352,13 @@ Create `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "numan-portfolio": {
+    "wealthpoint-analysis": {
       "command": "python",
       "args": ["-m", "mcp_server.server"],
       "cwd": "/path/to/finance-analysis",
       "env": {
         "ANTHROPIC_API_KEY": "sk-ant-...",
-        "DATABASE_URL": "sqlite:///./numan.db"
+        "DATABASE_URL": "sqlite:///./wealthpoint.db"
       }
     }
   }

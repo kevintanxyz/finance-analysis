@@ -1,8 +1,8 @@
-# Testing Guide for NUMAN
+# Testing Guide for WealthPoint
 
 **Last Updated**: February 11, 2026
 
-This guide explains how to test the NUMAN platform after Phase 1 completion.
+This guide explains how to test the WealthPoint platform after Phase 1 completion.
 
 ---
 
@@ -165,13 +165,13 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "numan-portfolio": {
+    "wealthpoint-analysis": {
       "command": "python",
       "args": ["-m", "mcp_server.server"],
       "cwd": "/absolute/path/to/finance-analysis",
       "env": {
         "ANTHROPIC_API_KEY": "sk-ant-your-key-here",
-        "DATABASE_URL": "sqlite:///./numan.db"
+        "DATABASE_URL": "sqlite:///./wealthpoint.db"
       }
     }
   }
@@ -180,7 +180,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ### Step 2: Restart Claude Desktop
 
-Close and reopen Claude Desktop. The NUMAN tools should appear in the tools menu.
+Close and reopen Claude Desktop. The WealthPoint tools should appear in the tools menu.
 
 ### Step 3: Test Workflow
 
@@ -382,7 +382,7 @@ Before moving to Phase 2, verify:
 
 - [ ] Unit tests pass: `pytest tests/test_pdf_parser_dynamic.py`
 - [ ] MCP server starts: `python -m mcp_server.server`
-- [ ] Database initializes: Check `numan.db` created
+- [ ] Database initializes: Check `wealthpoint.db` created
 - [ ] LLM provider works: Test with mock or real API key
 - [ ] Integration test passes with real PDF
 - [ ] Claude Desktop integration works

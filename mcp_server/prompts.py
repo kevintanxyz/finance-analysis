@@ -13,7 +13,7 @@ Phase 1 prompts:
 Phase 3-4 additions:
 - More specialized prompts as agents are implemented
 """
-from mcp_server.server import mcp
+from mcp_server import mcp
 
 
 # ────────────────────────────────────────────────────────────────────────────

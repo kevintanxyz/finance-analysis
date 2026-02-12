@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     ollama_url: str = "http://localhost:11434"
 
     # Database
-    database_url: str = "sqlite:///./numan.db"
+    database_url: str = "sqlite:///./wealthpoint.db"
 
     # API (simple auth v1)
     api_key: str = "your-api-key-here"

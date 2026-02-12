@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "wealthpoint-analysis": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/Users/kevintan/Documents/Projects/wealthpoint-projects/finance-analysis",
+        "run",
+        "python",
+        "-m",
+        "mcp_server.server"
+      ],
+      "env": {
+        "PYTHONPATH": "/Users/kevintan/Documents/Projects/wealthpoint-projects/finance-analysis",
+        "ANTHROPIC_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}

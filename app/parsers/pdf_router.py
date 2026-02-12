@@ -2,7 +2,7 @@
 PDF Parser Router — Intelligent format detection and parsing strategy.
 
 Routes PDF extraction based on bank format detection:
-- Known formats (NUMAN) → pdfplumber (fast, free)
+- Known formats (WealthPoint) → pdfplumber (fast, free)
 - Unknown formats (UBS, Julius Baer) → Claude Vision (smart, paid)
 - Hybrid mode → Both + cross-validation
 

@@ -21,7 +21,7 @@ def test_bank_configs():
 
     # Test detection for each bank
     test_cases = [
-        ("NUMAN Valorisation Portfolio", "numan"),
+        ("WealthPoint Valorisation Portfolio", "wealthpoint"),
         ("UBS Switzerland AG Portfolio Statement", "ubs"),
         ("Julius Baer Vermögensübersicht", "julius_baer"),
         ("Credit Suisse Investment Proposal", "credit_suisse"),
@@ -142,7 +142,7 @@ def test_isin_mapping():
 async def main():
     """Run all component tests."""
     print("\n" + "="*60)
-    print("🧪 NUMAN Claude Vision Component Tests")
+    print("🧪 WealthPoint Claude Vision Component Tests")
     print("="*60)
 
     # Run all tests
@@ -164,7 +164,7 @@ async def main():
     print("🎯 All components ready!")
     print()
     print("Next steps:")
-    print("  1. Get a portfolio PDF (NUMAN, UBS, Julius Baer, any format)")
+    print("  1. Get a portfolio PDF (WealthPoint, UBS, Julius Baer, any format)")
     print("  2. Run: uv run python test_pdf_extraction.py <pdf_path>")
     print("  3. Claude Vision will extract all positions automatically")
 

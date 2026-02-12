@@ -112,7 +112,7 @@ Votre `pyproject.toml` contient:
 
 ```toml
 [project]
-name = "numan-portfolio"
+name = "wealthpoint-analysis"
 version = "1.2.0"
 requires-python = ">=3.10"
 
@@ -195,7 +195,7 @@ Tout est installé ! Vous pouvez maintenant:
 3. **Configurer `.env`** (si pas déjà fait):
    ```bash
    ANTHROPIC_API_KEY=sk-ant-...
-   DATABASE_URL=sqlite:///./numan.db
+   DATABASE_URL=sqlite:///./wealthpoint.db
    ```
 
 ---

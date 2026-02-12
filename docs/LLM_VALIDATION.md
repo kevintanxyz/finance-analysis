@@ -8,7 +8,7 @@
 
 ## Overview
 
-NUMAN now supports **hybrid PDF parsing** combining:
+WealthPoint now supports **hybrid PDF parsing** combining:
 1. **pdfplumber** — Fast table extraction (structured data)
 2. **LLM validation** — Intelligent correction and enhancement (accuracy)
 

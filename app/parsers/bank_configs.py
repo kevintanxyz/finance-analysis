@@ -6,7 +6,7 @@ and parser strategies for each supported bank.
 """
 from typing import Literal
 
-BankName = Literal["numan", "ubs", "julius_baer", "credit_suisse", "generic"]
+BankName = Literal["wealthpoint", "ubs", "julius_baer", "credit_suisse", "generic"]
 ParserStrategy = Literal["pdfplumber", "llm_vision", "hybrid"]
 
 
@@ -49,10 +49,10 @@ class BankConfig:
 # ────────────────────────────────────────────────────────────────────────────
 
 BANK_CONFIGS: dict[BankName, BankConfig] = {
-    "numan": BankConfig(
-        name="numan",
+    "wealthpoint": BankConfig(
+        name="wealthpoint",
         detect_keywords=[
-            "NUMAN",
+            "WealthPoint",
             "Rothschild",
             "Edmond de Rothschild",
             "VALORISATION DE VOTRE PORTEFEUILLE",

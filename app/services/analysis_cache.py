@@ -1,5 +1,5 @@
 """
-Analysis Cache Service for NUMAN
+Analysis Cache Service for WealthPoint
 
 BUSINESS VALUE:
 - Reduce costs (avoid redundant yfinance calls)
@@ -14,6 +14,7 @@ CACHE STRATEGY:
 
 import hashlib
 import json
+import uuid
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -152,6 +153,7 @@ class AnalysisCacheService:
             else:
                 # Create new entry
                 cache_entry = AnalysisCache(
+                    id=str(uuid.uuid4()),
                     portfolio_id=portfolio_id,
                     analysis_type=analysis_type,
                     ticker=ticker,

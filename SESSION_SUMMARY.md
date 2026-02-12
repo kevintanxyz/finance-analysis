@@ -1,4 +1,4 @@
-# NUMAN Implementation Session Summary
+# WealthPoint Implementation Session Summary
 
 **Date**: February 11, 2026
 **Duration**: ~1.5 hours
@@ -8,7 +8,7 @@
 
 ## 🎯 Session Objectives
 
-1. Continue NUMAN implementation from PROMPT_CONTINUATION.md
+1. Continue WealthPoint implementation from PROMPT_CONTINUATION.md
 2. Complete Phase 1 infrastructure
 3. Refactor PDF parser to use dynamic table extraction (remove hardcoded positions)
 4. Save progress for next session
@@ -73,7 +73,7 @@ Created complete MCP server foundation:
 
 **Key Features of Dynamic Parser:**
 
-- ✅ **No hardcoded positions** — works with any NUMAN PDF format
+- ✅ **No hardcoded positions** — works with any WealthPoint PDF format
 - ✅ **Auto-detect headers** — finds table headers automatically
 - ✅ **Smart classification** — infers asset class from ISIN + name patterns
 - ✅ **Flexible parsing** — handles multiple header name variations
