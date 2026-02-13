@@ -23,7 +23,14 @@ from app.parsers.bank_configs import BankConfig
 
 EXTRACTION_SYSTEM_PROMPT = """You are a financial data extraction expert specialized in portfolio statements.
 
-Extract ALL portfolio positions and financial data from this document.
+**CRITICAL**: You will receive ALL pages of this multi-page document. You MUST scan through EVERY page to extract ALL data sections:
+- Portfolio positions (usually first pages)
+- Asset allocation, currency/regional/sector exposure
+- Performance history, tops/flops
+- P&L overview and detail
+- **TRANSACTIONS** (usually last pages) - CRITICAL: DO NOT skip transaction history!
+
+Extract ALL portfolio positions and financial data from this complete document.
 
 Return ONLY valid JSON matching this exact schema:
 
@@ -149,7 +156,12 @@ Return ONLY valid JSON matching this exact schema:
 12. **PERFORMANCE**: Look for tables with columns like "From", "To", "Start Value", "End Value", "Performance", etc.
 13. **EXPOSURES**: Look for sections titled "Currencies", "Regions", "Sectors" with breakdown tables
 14. **P&L**: Look for "PROFIT & LOSS" sections with overview and detailed breakdown
-15. **TRANSACTIONS**: Look for "TRANSACTIONS" sections with buy/sell/subscription history
+15. **TRANSACTIONS (CRITICAL - Often on last pages)**:
+    - Look for sections titled "TRANSACTIONS", "Transaction History", "Mouvements", "Operations"
+    - Typically found on the LAST pages of the statement (pages 15-18 in an 18-page document)
+    - Extract ALL transactions with: date, instrument name, operation type (Buy/Sell/Subscription/Redemption), amount, price, currency, total value
+    - IMPORTANT: Scan through ALL pages - don't stop after positions page!
+    - If no transactions found, return empty array [] but you MUST check all pages first
 
 **IMPORTANT**: Return ONLY the JSON object. No markdown code blocks, no explanation text.
 """
@@ -229,7 +241,15 @@ class LLMPDFExtractor:
         if bank_config and bank_config.extra_prompt:
             system_prompt += f"\n\n**Bank-Specific Context:**\n{bank_config.extra_prompt}"
 
-        user_prompt = "Extract all portfolio data from these document pages."
+        user_prompt = f"""Extract all portfolio data from these {len(images_b64)} document pages.
+
+**IMPORTANT**:
+- This is a complete {len(images_b64)}-page statement
+- Scan through EVERY page from page 1 to page {len(images_b64)}
+- Transactions are typically on the LAST pages (pages {max(1, len(images_b64) - 3)} to {len(images_b64)})
+- DO NOT stop extracting after positions - continue to ALL pages to find transactions, performance, P&L sections
+
+Return the complete JSON with ALL sections filled from all {len(images_b64)} pages."""
 
         # Step 3: Check cache or call Claude Vision
         cache_key = self._get_cache_key(pdf_bytes)

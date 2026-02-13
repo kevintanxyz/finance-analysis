@@ -1,0 +1,56 @@
+{
+	"owners": ["Marie Laurent", "Pierre Durand", "Antoine Moreau", "Sarah Blanc"],
+	"bankSets": [
+		[
+			{ "name": "UBS", "connectionMethod": "E-banking export" },
+			{ "name": "Credit Suisse", "connectionMethod": "Custodian feed" }
+		],
+		[
+			{ "name": "Julius Baer", "connectionMethod": "Direct API" }
+		],
+		[
+			{ "name": "Pictet", "connectionMethod": "E-banking export" },
+			{ "name": "Lombard Odier", "connectionMethod": "Custodian feed" }
+		],
+		[
+			{ "name": "HSBC Private Bank", "connectionMethod": "Manual upload" }
+		],
+		[
+			{ "name": "UBS", "connectionMethod": "Custodian feed" },
+			{ "name": "Julius Baer", "connectionMethod": "E-banking export" },
+			{ "name": "Pictet", "connectionMethod": "Direct API" }
+		]
+	],
+	"assetAllocations": [
+		[
+			{ "type": "Public Equities", "percentage": 40 },
+			{ "type": "Fixed Income", "percentage": 30 },
+			{ "type": "Real Estate", "percentage": 15 },
+			{ "type": "Cash", "percentage": 15 }
+		],
+		[
+			{ "type": "Public Equities", "percentage": 60 },
+			{ "type": "Private Equity", "percentage": 20 },
+			{ "type": "Funds", "percentage": 20 }
+		],
+		[
+			{ "type": "Fixed Income", "percentage": 50 },
+			{ "type": "Cash", "percentage": 30 },
+			{ "type": "Real Estate", "percentage": 20 }
+		]
+	],
+	"configurations": [
+		{ "clientIdx": 0, "meetingsCompleted": 0, "tasksDone": 2, "tasksInProgress": 1, "blocked": [], "hasData": false, "daysCreated": 40, "targetDays": 45 },
+		{ "clientIdx": 1, "meetingsCompleted": 1, "tasksDone": 4, "tasksInProgress": 2, "blocked": [], "hasData": true, "daysCreated": 65, "targetDays": 16 },
+		{ "clientIdx": 2, "meetingsCompleted": 2, "tasksDone": 5, "tasksInProgress": 1, "blocked": [6], "hasData": true, "daysCreated": 110, "targetDays": -5 },
+		{ "clientIdx": 3, "meetingsCompleted": 4, "tasksDone": 13, "tasksInProgress": 0, "blocked": [], "hasData": true, "validatedData": 2, "daysCreated": 140, "targetDays": -40 },
+		{ "clientIdx": 4, "meetingsCompleted": 2, "tasksDone": 7, "tasksInProgress": 3, "blocked": [], "hasData": true, "daysCreated": 55, "targetDays": 34 },
+		{ "clientIdx": 5, "meetingsCompleted": 0, "tasksDone": 1, "tasksInProgress": 2, "blocked": [3], "hasData": false, "daysCreated": 75, "targetDays": -10 },
+		{ "clientIdx": 6, "meetingsCompleted": 3, "tasksDone": 8, "tasksInProgress": 2, "blocked": [], "hasData": true, "daysCreated": 120, "targetDays": 11 },
+		{ "clientIdx": 7, "meetingsCompleted": 4, "tasksDone": 13, "tasksInProgress": 0, "blocked": [], "hasData": true, "validatedData": 3, "daysCreated": 185, "targetDays": -70 },
+		{ "clientIdx": 8, "meetingsCompleted": 1, "tasksDone": 3, "tasksInProgress": 2, "blocked": [], "hasData": false, "daysCreated": 35, "targetDays": 50 },
+		{ "clientIdx": 9, "meetingsCompleted": 0, "tasksDone": 0, "tasksInProgress": 1, "blocked": [], "hasData": false, "daysCreated": 15, "targetDays": 66 },
+		{ "clientIdx": 10, "meetingsCompleted": 1, "tasksDone": 2, "tasksInProgress": 3, "blocked": [4, 7], "hasData": false, "daysCreated": 95, "targetDays": -15 },
+		{ "clientIdx": 11, "meetingsCompleted": 4, "tasksDone": 13, "tasksInProgress": 0, "blocked": [], "hasData": true, "validatedData": 3, "daysCreated": 210, "targetDays": -90 }
+	]
+}

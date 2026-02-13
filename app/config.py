@@ -27,7 +27,8 @@ class Settings(BaseSettings):
 
     # External MCP Servers (keys needed for Market Researcher)
     exa_api_key: Optional[str] = None
-    brightdata_api_token: Optional[str] = None
+    bright_data_api_key: Optional[str] = None
+    eodhd_api_key: Optional[str] = None
 
     # Market Data
     yfinance_cache_ttl: int = 300  # Cache 5 minutes

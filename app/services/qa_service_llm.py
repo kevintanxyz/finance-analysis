@@ -93,7 +93,10 @@ class QAService:
         """
         # Extract key portfolio info for context
         summary = {
+            "extraction_date": portfolio_data.get("extraction_date"),
             "valuation_date": portfolio_data.get("valuation_date"),
+            "mandate": portfolio_data.get("mandate", {}),
+            "portfolio_details": portfolio_data.get("portfolio_details", {}),
             "total_value_chf": portfolio_data.get("total_value_chf"),
             "positions_count": len(portfolio_data.get("positions", [])),
             "asset_allocation": portfolio_data.get("asset_allocation", []),
@@ -101,14 +104,22 @@ class QAService:
             "regional_exposure": portfolio_data.get("regional_exposure", []),
             "sector_exposure": portfolio_data.get("sector_exposure", []),
             "pnl_overview": portfolio_data.get("pnl_overview", {}),
+            "pnl_detail": portfolio_data.get("pnl_detail", {}),
+            "performance": portfolio_data.get("performance", []),
             "tops": portfolio_data.get("tops", []),
             "flops": portfolio_data.get("flops", []),
+            "transactions_count": len(portfolio_data.get("transactions", [])),
+            "risk_analysis": portfolio_data.get("risk_analysis", {}),
         }
 
         # Include full positions data if question seems position-specific
         q_lower = question.lower()
         if any(keyword in q_lower for keyword in ["position", "liste", "list", "détail", "detail"]):
             summary["positions"] = portfolio_data.get("positions", [])
+
+        # Include full transactions if question seems transaction-specific
+        if any(keyword in q_lower for keyword in ["transaction", "opération", "operation", "achat", "vente", "buy", "sell", "historique", "history"]):
+            summary["transactions"] = portfolio_data.get("transactions", [])
 
         prompt = f"""**PORTFOLIO DATA:**
 ```json

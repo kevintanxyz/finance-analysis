@@ -1,0 +1,52 @@
+[
+	{
+		"id": "1",
+		"name": "Credit Suisse",
+		"logo": "https://logo.clearbit.com/credit-suisse.com",
+		"country": "Switzerland",
+		"countryCode": "CH",
+		"status": "connected",
+		"lastSync": "12 May 2026, 14:32",
+		"accounts": [
+			{ "id": "a1", "name": "Main Checking", "iban": "CH93 0076 2011 6238 5295 7", "type": "current", "currency": "CHF", "balance": 12450.00, "lastSync": "12 May 2026, 14:32", "included": true },
+			{ "id": "a2", "name": "Savings Account", "iban": "CH93 0076 2011 6238 5295 8", "type": "savings", "currency": "CHF", "balance": 85000.00, "lastSync": "12 May 2026, 14:32", "included": true }
+		]
+	},
+	{
+		"id": "2",
+		"name": "BNP Paribas",
+		"logo": "https://logo.clearbit.com/bnpparibas.com",
+		"country": "France",
+		"countryCode": "FR",
+		"status": "syncing",
+		"lastSync": "12 May 2026, 10:15",
+		"accounts": [
+			{ "id": "b1", "name": "Compte Courant", "iban": "FR76 3000 6000 0112 3456 7890 189", "type": "current", "currency": "EUR", "balance": 3200.50, "lastSync": "12 May 2026, 10:15", "included": true }
+		]
+	},
+	{
+		"id": "3",
+		"name": "Deutsche Bank",
+		"logo": "https://logo.clearbit.com/db.com",
+		"country": "Germany",
+		"countryCode": "DE",
+		"status": "expired",
+		"lastSync": "28 April 2026, 09:00",
+		"accounts": [
+			{ "id": "c1", "name": "Girokonto", "iban": "DE89 3704 0044 0532 0130 00", "type": "current", "currency": "EUR", "balance": 5600.00, "lastSync": "28 April 2026, 09:00", "included": true },
+			{ "id": "c2", "name": "Tagesgeldkonto", "iban": "DE89 3704 0044 0532 0130 01", "type": "savings", "currency": "EUR", "balance": 25000.00, "lastSync": "28 April 2026, 09:00", "included": false }
+		]
+	},
+	{
+		"id": "4",
+		"name": "ING",
+		"logo": "https://logo.clearbit.com/ing.com",
+		"country": "Netherlands",
+		"countryCode": "NL",
+		"status": "error",
+		"lastSync": "01 May 2026, 16:45",
+		"accounts": [
+			{ "id": "d1", "name": "Betaalrekening", "iban": "NL91 ABNA 0417 1643 00", "type": "current", "currency": "EUR", "lastSync": "01 May 2026, 16:45", "included": true }
+		]
+	}
+]

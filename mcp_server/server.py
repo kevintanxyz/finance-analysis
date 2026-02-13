@@ -73,11 +73,22 @@ if __name__ == "__main__":
         # Streamable HTTP mode (for React frontend)
         # Use uvicorn to run the FastMCP Starlette app with custom port
         import uvicorn
+        from starlette.middleware.cors import CORSMiddleware
 
         print(f"Starting WealthPoint Analysis MCP Server in Streamable HTTP mode on port {port}...", file=sys.stderr)
 
         # Get the ASGI app from FastMCP and run it with uvicorn
         app = mcp.streamable_http_app()
+
+        # Add CORS middleware to allow frontend requests
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["http://localhost:8080", "http://127.0.0.1:8080"],
+            allow_credentials=True,
+            allow_methods=["GET", "POST", "OPTIONS"],
+            allow_headers=["*"],
+        )
+
         uvicorn.run(
             app,
             host="0.0.0.0",

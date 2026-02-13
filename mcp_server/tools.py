@@ -188,28 +188,18 @@ async def upload_portfolio(
         from app.parsers.enhanced_parser import extract_positions_with_validation
         from app.parsers.valuation_pdf import ISIN_TICKER_MAP
 
-        # Extract with Claude Vision + optional LLM validation
+        # Extract with Claude Vision router (gets complete PortfolioData)
         try:
-            validated_positions, validation_summary = await extract_positions_with_validation(
-                pdf_bytes,
-                ISIN_TICKER_MAP,
-                total_value_chf=0.0,  # Will be calculated from positions
+            from app.parsers.pdf_router import PDFParserRouter
+
+            router = PDFParserRouter(
                 llm=llm,
-                enable_llm_validation=enable_llm_validation,
+                isin_ticker_map=ISIN_TICKER_MAP,
                 verbose=False,
-                filename=filename,
             )
 
-            # Build PortfolioData from positions
-            from app.models.portfolio import PortfolioData
-
-            total_value = sum(p.value_chf for p in validated_positions)
-
-            portfolio_data = PortfolioData(
-                valuation_date=validation_summary.get("valuation_date", ""),
-                total_value_chf=total_value,
-                positions=validated_positions,
-            )
+            # This returns the COMPLETE PortfolioData with all sections
+            portfolio_data, validation_summary = await router.parse(pdf_bytes, filename)
 
         except Exception as e:
             # Claude Vision extraction failed - try basic fallback
@@ -287,9 +277,16 @@ async def ask_portfolio(session_id: str, question: str) -> dict:
     """
     Ask any question about a portfolio in natural language (French or English).
 
-    The Q&A service automatically routes to the right analysis and returns
+    The Q&A service automatically routes to the right analysis tool and returns
     both a text answer and structured data (charts, tables, KPIs) for the
     frontend to render.
+
+    This is an intelligent orchestrator that determines which specialized tool to call:
+    - Risk analysis → analyze_risk
+    - Correlation → analyze_correlation
+    - Portfolio optimization → optimize_portfolio
+    - Market data → get_market_data
+    - Simple facts → QAService (direct answer)
 
     Args:
         session_id: Portfolio session ID (from upload_portfolio)
@@ -302,16 +299,18 @@ async def ask_portfolio(session_id: str, question: str) -> dict:
         - charts: Array of chart data (optional)
         - tables: Array of table data (optional)
         - kpis: Array of KPI cards (optional)
+        - tool_used: Name of the tool that was called (for debugging)
 
     Examples:
-        - "Quelle est l'allocation du portefeuille ?"
-        - "Top performers YTD"
-        - "Analyse le risque de Roche"
-        - "Should I rebalance towards more bonds?"
+        - "Quelle est l'allocation du portefeuille ?" → QAService (simple)
+        - "Top performers YTD" → QAService (simple)
+        - "Analyse le risque de Roche" → analyze_risk
+        - "Corrélation entre Apple et Microsoft" → analyze_correlation
+        - "Optimise mon portefeuille pour 8% de rendement" → optimize_portfolio
     """
     # Get portfolio data
-    portfolio_data = get_portfolio_by_id(session_id)
-    if not portfolio_data:
+    portfolio_data_dict = get_portfolio_by_id(session_id)
+    if not portfolio_data_dict:
         return {
             "content": f"Portfolio {session_id} not found. Please upload a PDF first.",
             "display_type": "text",
@@ -321,19 +320,195 @@ async def ask_portfolio(session_id: str, question: str) -> dict:
     # Create LLM provider
     llm = create_llm()
 
-    # Create Q&A service
-    qa_service = QAService(llm)
+    # Create orchestrator to route question to appropriate tool
+    from app.services.orchestrator import ToolOrchestrator
+    orchestrator = ToolOrchestrator(llm)
 
-    # Process question
     try:
-        response = await qa_service.ask(portfolio_data, question)
-        return response
+        # Route question to determine which tool to call
+        routing = await orchestrator.route(question, portfolio_data_dict)
+
+        # If clarification is needed, ask user
+        if routing.get("clarification_needed"):
+            return {
+                "content": routing["clarification_needed"],
+                "display_type": "text",
+                "tool_used": "orchestrator",
+                "routing_info": routing,
+            }
+
+        tool_name = routing.get("tool_name")
+        confidence = routing.get("confidence", 0.0)
+
+        # If confidence is low or no tool matched, use simple Q&A
+        if not tool_name or confidence < 0.6:
+            from app.services.qa_service_llm import QAService
+            qa_service = QAService(llm)
+            response = await qa_service.ask(portfolio_data_dict, question)
+            response["tool_used"] = "qa_service"
+            return response
+
+        # Route to the appropriate specialized tool
+        # Each case calls the MCP tool function directly
+        params = routing.get("params", {})
+        params["session_id"] = session_id  # Always include session_id
+
+        # Call the appropriate tool
+        if tool_name == "get_market_data":
+            result = await get_market_data(session_id)
+            result["tool_used"] = "get_market_data"
+            return result
+
+        elif tool_name == "analyze_risk":
+            ticker = params.get("ticker")
+            if not ticker:
+                return {
+                    "content": "Quelle position souhaitez-vous analyser ? Merci de préciser le ticker ou le nom.",
+                    "display_type": "text",
+                    "tool_used": "orchestrator",
+                }
+            result = await analyze_risk(
+                session_id=session_id,
+                ticker=ticker,
+                var_confidence_level=params.get("var_confidence_level", 0.95),
+                var_time_horizon_days=params.get("var_time_horizon_days", 10),
+            )
+            result["tool_used"] = "analyze_risk"
+            return result
+
+        elif tool_name == "analyze_momentum":
+            ticker = params.get("ticker")
+            if not ticker:
+                return {
+                    "content": "Quelle position souhaitez-vous analyser ? Merci de préciser le ticker ou le nom.",
+                    "display_type": "text",
+                    "tool_used": "orchestrator",
+                }
+            result = await analyze_momentum(
+                session_id=session_id,
+                ticker=ticker,
+                lookback_days=params.get("lookback_days", 90),
+            )
+            result["tool_used"] = "analyze_momentum"
+            return result
+
+        elif tool_name == "analyze_correlation":
+            tickers = params.get("tickers")
+            if not tickers or len(tickers) < 2:
+                return {
+                    "content": "Merci de spécifier au moins 2 positions pour l'analyse de corrélation.",
+                    "display_type": "text",
+                    "tool_used": "orchestrator",
+                }
+            result = await analyze_correlation(
+                session_id=session_id,
+                tickers=tickers,
+                lookback_days=params.get("lookback_days", 90),
+            )
+            result["tool_used"] = "analyze_correlation"
+            return result
+
+        elif tool_name == "price_options":
+            result = await price_options(
+                session_id=session_id,
+                ticker=params.get("ticker", ""),
+                strike_price=params.get("strike_price"),
+                maturity_days=params.get("maturity_days", 30),
+                option_type=params.get("option_type", "call"),
+                risk_free_rate=params.get("risk_free_rate", 0.03),
+            )
+            result["tool_used"] = "price_options"
+            return result
+
+        elif tool_name == "optimize_portfolio":
+            tickers = params.get("tickers")
+            if not tickers:
+                # Use all listed tickers from portfolio
+                tickers = [p["ticker"] for p in portfolio_data_dict.get("positions", []) if p.get("ticker")]
+            result = await optimize_portfolio(
+                session_id=session_id,
+                tickers=tickers,
+                target_return=params.get("target_return"),
+                lookback_days=params.get("lookback_days", 90),
+            )
+            result["tool_used"] = "optimize_portfolio"
+            return result
+
+        elif tool_name == "check_compliance":
+            result = await check_compliance(
+                session_id=session_id,
+                max_single_position_pct=params.get("max_single_position_pct", 20.0),
+                max_sector_pct=params.get("max_sector_pct", 30.0),
+                min_liquidity_pct=params.get("min_liquidity_pct", 5.0),
+            )
+            result["tool_used"] = "check_compliance"
+            return result
+
+        elif tool_name == "analyze_dividends":
+            result = await analyze_dividends(session_id)
+            result["tool_used"] = "analyze_dividends"
+            return result
+
+        elif tool_name == "analyze_margin":
+            result = await analyze_margin(
+                session_id=session_id,
+                margin_interest_rate=params.get("margin_interest_rate", 5.0),
+            )
+            result["tool_used"] = "analyze_margin"
+            return result
+
+        elif tool_name == "generate_full_report":
+            result = await generate_full_report(session_id)
+            result["tool_used"] = "generate_full_report"
+            return result
+
+        elif tool_name == "analyze_portfolio_profile":
+            result = await analyze_portfolio_profile(session_id)
+            result["tool_used"] = "analyze_portfolio_profile"
+            return result
+
+        elif tool_name == "analyze_security":
+            ticker = params.get("ticker")
+            if not ticker:
+                return {
+                    "content": "Quelle valeur souhaitez-vous analyser ? Merci de préciser le ticker ou le nom.",
+                    "display_type": "text",
+                    "tool_used": "orchestrator",
+                }
+            result = await analyze_security(session_id=session_id, ticker=ticker)
+            result["tool_used"] = "analyze_security"
+            return result
+
+        elif tool_name == "recommend_rebalancing":
+            result = await recommend_rebalancing(
+                session_id=session_id,
+                target_equity_pct=params.get("target_equity_pct"),
+                target_bonds_pct=params.get("target_bonds_pct"),
+                target_cash_pct=params.get("target_cash_pct"),
+                target_alternatives_pct=params.get("target_alternatives_pct"),
+            )
+            result["tool_used"] = "recommend_rebalancing"
+            return result
+
+        elif tool_name == "get_portfolio_allocation":
+            result = await get_portfolio_allocation(session_id)
+            result["tool_used"] = "get_portfolio_allocation"
+            return result
+
+        else:
+            # Unknown tool, fallback to Q&A
+            from app.services.qa_service_llm import QAService
+            qa_service = QAService(llm)
+            response = await qa_service.ask(portfolio_data_dict, question)
+            response["tool_used"] = "qa_service_fallback"
+            return response
 
     except Exception as e:
         return {
             "content": f"Error processing question: {str(e)}",
             "display_type": "text",
             "error": str(e),
+            "tool_used": "error",
         }
 
 

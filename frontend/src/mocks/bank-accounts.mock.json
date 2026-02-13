@@ -1,0 +1,5 @@
+[
+	{ "id": "main", "name": "Main checking account" },
+	{ "id": "savings", "name": "Savings account" },
+	{ "id": "investment", "name": "Investment account" }
+]

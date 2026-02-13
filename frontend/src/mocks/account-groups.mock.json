@@ -1,0 +1,28 @@
+[
+	{
+		"bankId": "1",
+		"bankName": "Credit Suisse",
+		"bankLogo": "https://logo.clearbit.com/credit-suisse.com",
+		"accounts": [
+			{ "id": "a1", "name": "Main Checking", "currency": "CHF" },
+			{ "id": "a2", "name": "Savings Account", "currency": "CHF" }
+		]
+	},
+	{
+		"bankId": "2",
+		"bankName": "BNP Paribas",
+		"bankLogo": "https://logo.clearbit.com/bnpparibas.com",
+		"accounts": [
+			{ "id": "b1", "name": "Compte Courant", "currency": "EUR" }
+		]
+	},
+	{
+		"bankId": "3",
+		"bankName": "Deutsche Bank",
+		"bankLogo": "https://logo.clearbit.com/db.com",
+		"accounts": [
+			{ "id": "c1", "name": "Girokonto", "currency": "EUR" },
+			{ "id": "c2", "name": "Tagesgeldkonto", "currency": "EUR" }
+		]
+	}
+]

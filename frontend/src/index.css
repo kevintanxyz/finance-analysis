@@ -1,0 +1,215 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fintech SaaS Design System - Multi-Theme Support */
+
+@layer base {
+  /* ===== PREMIUM THEME (Default) - Dark Grey + Deep Blue ===== */
+  :root,
+  .theme-premium {
+    --background: 0 0% 8%;
+    --foreground: 0 0% 100%;
+
+    --card: 0 0% 11%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 0 0% 11%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 215 50% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 14%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 55%;
+
+    --accent: 215 50% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 59%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 150 60% 51%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+    --ring: 215 50% 45%;
+
+    --gold: 43 96% 56%;
+
+    --radius: 0.25rem;
+
+    --sidebar-background: 0 0% 11%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 215 50% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 14%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 16%;
+    --sidebar-ring: 215 50% 45%;
+    --sidebar-muted: 0 0% 55%;
+
+    --toggle-off: 0 0% 18%;
+  }
+
+  /* ===== CLASSIC THEME - Blue Background + Gold (#B19069) ===== */
+  .theme-classic {
+    --background: 274 58% 5%;
+    --foreground: 0 0% 100%;
+
+    --card: 240 30% 10%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 240 30% 10%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 37 29% 55%;
+    --primary-foreground: 274 58% 5%;
+
+    --secondary: 240 25% 14%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 240 25% 12%;
+    --muted-foreground: 240 15% 50%;
+
+    --accent: 37 29% 55%;
+    --accent-foreground: 274 58% 5%;
+
+    --destructive: 0 72% 59%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 150 60% 51%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 240 25% 16%;
+    --input: 240 25% 16%;
+    --ring: 37 29% 55%;
+
+    --gold: 37 29% 55%;
+
+    --sidebar-background: 240 30% 10%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 37 29% 55%;
+    --sidebar-primary-foreground: 274 58% 5%;
+    --sidebar-accent: 240 25% 14%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 240 25% 16%;
+    --sidebar-ring: 37 29% 55%;
+    --sidebar-muted: 240 15% 50%;
+
+    --toggle-off: 240 25% 18%;
+  }
+
+  /* ===== LIGHT THEME - Cream/White + Deep Blue ===== */
+  .theme-light {
+    --background: 40 20% 96%;
+    --foreground: 235 25% 15%;
+
+    --card: 40 15% 98%;
+    --card-foreground: 235 25% 15%;
+
+    --popover: 40 15% 98%;
+    --popover-foreground: 235 25% 15%;
+
+    --primary: 215 50% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 40 10% 92%;
+    --secondary-foreground: 235 25% 15%;
+
+    --muted: 40 10% 90%;
+    --muted-foreground: 235 15% 45%;
+
+    --accent: 215 50% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 150 60% 40%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 40 10% 85%;
+    --input: 40 10% 85%;
+    --ring: 215 50% 45%;
+
+    --gold: 43 96% 56%;
+
+    --sidebar-background: 40 15% 98%;
+    --sidebar-foreground: 235 25% 15%;
+    --sidebar-primary: 215 50% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 40 10% 92%;
+    --sidebar-accent-foreground: 235 25% 15%;
+    --sidebar-border: 40 10% 85%;
+    --sidebar-ring: 215 50% 45%;
+    --sidebar-muted: 235 15% 45%;
+
+    --toggle-off: 40 10% 80%;
+  }
+
+  /* Keep .dark class for compatibility (maps to premium) */
+  .dark {
+    --background: 0 0% 8%;
+    --foreground: 0 0% 100%;
+
+    --card: 0 0% 11%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 0 0% 11%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 215 50% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 14%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 55%;
+
+    --accent: 215 50% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 59%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 150 60% 51%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+    --ring: 215 50% 45%;
+
+    --gold: 43 96% 56%;
+
+    --sidebar-background: 0 0% 11%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 215 50% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 14%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 16%;
+    --sidebar-ring: 215 50% 45%;
+    --sidebar-muted: 0 0% 55%;
+
+    --toggle-off: 0 0% 18%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: Geneva, Verdana, Tahoma, sans-serif;
+  }
+}

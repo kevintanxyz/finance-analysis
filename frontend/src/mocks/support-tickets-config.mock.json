@@ -1,0 +1,99 @@
+[
+	{
+		"clientIdx": 0,
+		"issueType": "bug",
+		"status": "open",
+		"priority": "critical",
+		"hoursAgo": 3,
+		"comment": "Application crashes when trying to upload large Excel files. Getting a blank screen after file selection. This is blocking our quarterly reporting.",
+		"assignedSupportIdx": 0
+	},
+	{
+		"clientIdx": 1,
+		"issueType": "data_issue",
+		"status": "escalated",
+		"priority": "high",
+		"hoursAgo": 18,
+		"comment": "Portfolio performance data shows incorrect values for Q4 2024. The percentages don't match our internal records and clients are asking questions.",
+		"assignedSupportIdx": 1,
+		"assignedTechIdx": 2,
+		"additionalLogs": [
+			{ "hoursAgo": 12, "authorSupportIdx": 1, "type": "escalated", "message": "Escalated to Tech team - data calculation issue identified" }
+		]
+	},
+	{
+		"clientIdx": 2,
+		"issueType": "ui_problem",
+		"status": "in_progress",
+		"priority": "medium",
+		"hoursAgo": 24,
+		"comment": "The sidebar menu collapses unexpectedly on iPad Safari. Need to refresh the page to restore navigation.",
+		"assignedSupportIdx": 0,
+		"assignedCSMIdx": 4,
+		"additionalLogs": [
+			{ "hoursAgo": 20, "authorSupportIdx": 0, "type": "status_change", "message": "Status changed to In Progress" },
+			{ "hoursAgo": 18, "authorSupportIdx": 0, "type": "note", "message": "Reproduced on iPad Safari 17.2. Investigating CSS flexbox issues." }
+		]
+	},
+	{
+		"clientIdx": 3,
+		"issueType": "other",
+		"status": "waiting_client",
+		"priority": "low",
+		"hoursAgo": 48,
+		"comment": "Would like to customize the color scheme of reports to match our company branding. Is this possible?",
+		"assignedSupportIdx": 1,
+		"assignedCSMIdx": 5,
+		"additionalLogs": [
+			{ "hoursAgo": 40, "authorSupportIdx": 1, "type": "status_change", "message": "Status changed to Waiting Client" },
+			{ "hoursAgo": 40, "authorSupportIdx": 1, "type": "client_notification", "message": "Asked client for brand guidelines and color preferences" }
+		]
+	},
+	{
+		"clientIdx": 4,
+		"issueType": "performance",
+		"status": "open",
+		"priority": "high",
+		"hoursAgo": 2,
+		"comment": "Dashboard takes over 30 seconds to load. All other pages work fine but the main dashboard is extremely slow since this morning."
+	},
+	{
+		"clientIdx": 0,
+		"issueType": "bug",
+		"status": "resolved",
+		"priority": "medium",
+		"hoursAgo": 72,
+		"comment": "Unable to export transactions to CSV. Button shows loading but never completes.",
+		"assignedSupportIdx": 0,
+		"additionalLogs": [
+			{ "hoursAgo": 48, "authorSupportIdx": 0, "type": "resolved", "message": "Fixed in latest release. CSV export now works correctly." }
+		]
+	},
+	{
+		"clientIdx": 1,
+		"issueType": "bug",
+		"status": "in_progress",
+		"priority": "critical",
+		"hoursAgo": 1,
+		"comment": "Client login page returns 500 error. Multiple clients affected and cannot access the platform. This is impacting our morning operations.",
+		"assignedSupportIdx": 0,
+		"assignedTechIdx": 3,
+		"additionalLogs": [
+			{ "minutesAgo": 45, "authorSupportIdx": 0, "type": "status_change", "message": "Status changed to In Progress - Critical priority" },
+			{ "minutesAgo": 30, "authorSupportIdx": 3, "type": "note", "message": "Identified issue with authentication service. Rolling back recent deployment." }
+		]
+	},
+	{
+		"clientIdx": 2,
+		"issueType": "other",
+		"status": "closed",
+		"priority": "low",
+		"hoursAgo": 120,
+		"comment": "Question about how to set up two-factor authentication for team members.",
+		"assignedSupportIdx": 1,
+		"additionalLogs": [
+			{ "daysAgo": 4, "authorSupportIdx": 1, "type": "resolved", "message": "Provided documentation link and walked client through setup process." },
+			{ "daysAgo": 3, "authorSystem": true, "type": "status_change", "message": "Ticket closed after 24h of resolution" }
+		]
+	}
+]

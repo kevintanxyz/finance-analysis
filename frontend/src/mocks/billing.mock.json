@@ -1,0 +1,29 @@
+{
+	"currentCard": {
+		"brand": "visa",
+		"last4": "4242",
+		"expMonth": 12,
+		"expYear": 27,
+		"name": "Alex Johnson"
+	},
+	"subscription": {
+		"plan": "Premium",
+		"price": "€9.99",
+		"cycle": "monthly",
+		"nextBillingDate": "12 June 2026",
+		"status": "active"
+	},
+	"invoices": [
+		{ "id": "INV-10231", "date": "12 May 2026", "amount": "€9.99", "status": "paid" },
+		{ "id": "INV-10202", "date": "12 Apr 2026", "amount": "€9.99", "status": "paid" },
+		{ "id": "INV-10173", "date": "12 Mar 2026", "amount": "€9.99", "status": "paid" },
+		{ "id": "INV-10144", "date": "12 Feb 2026", "amount": "€9.99", "status": "paid" }
+	],
+	"billingInfo": {
+		"fullName": "Alex Johnson",
+		"email": "alex.johnson@example.com",
+		"address": "Bahnhofstrasse 42, 8001 Zurich",
+		"country": "Switzerland",
+		"vatNumber": ""
+	}
+}

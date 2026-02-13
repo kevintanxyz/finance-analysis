@@ -981,7 +981,7 @@ MCP_HTTP_PORT=3001              # Port pour Streamable HTTP (frontend React)
 
 # MCP Servers externes (configurés côté client, mais clés nécessaires)
 EXA_API_KEY=your-exa-api-key                # Exa — market research, web search
-BRIGHTDATA_API_TOKEN=your-brightdata-token  # Bright Data — web scraping, live data
+BRIGHT_DATA_API_KEY=your-brightdata-token  # Bright Data — web scraping, live data
 # Sequential Thinking — pas de clé API requise
 
 # Market Data
@@ -1290,7 +1290,7 @@ WealthPoint fonctionne en **constellation de MCP servers** — notre server est 
 | MCP Server | Package | Rôle dans WealthPoint | API Key requise |
 |------------|---------|-----------------|-----------------|
 | **Exa** | `exa-mcp-server` | Market research, intelligence gathering, recherche web sémantique (news financières, analyses, company research) | `EXA_API_KEY` |
-| **Bright Data** | `@brightdata/mcp` | Web scraping, extraction de données alternatives, données live (prix temps réel, filings SEC, rapports annuels) | `BRIGHTDATA_API_TOKEN` |
+| **Bright Data** | `@brightdata/mcp` | Web scraping, extraction de données alternatives, données live (prix temps réel, filings SEC, rapports annuels) | `BRIGHT_DATA_API_KEY` |
 | **Sequential Thinking** | `@modelcontextprotocol/server-sequential-thinking` | Raisonnement financier complexe en étapes (analyse multi-critères, scoring, workflows d'analyse séquentiels) | Aucune |
 
 #### Config Claude Desktop (tous les serveurs)

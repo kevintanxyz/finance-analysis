@@ -138,7 +138,7 @@ Optional:
 - `OLLAMA_MODEL` — Ollama model for fallback (default: `llama3.1`)
 - `OLLAMA_URL` — Ollama server URL (default: `http://localhost:11434`)
 - `EXA_API_KEY` — Exa web search API key (for Market Researcher)
-- `BRIGHTDATA_API_TOKEN` — Bright Data scraping API token
+- `BRIGHT_DATA_API_KEY` — Bright Data scraping API token
 
 ### 3. Initialize Database
 

@@ -1,0 +1,118 @@
+[
+	{
+		"id": "equities",
+		"name": "Equities",
+		"minAllocation": 40,
+		"maxAllocation": 60,
+		"isExpanded": true,
+		"instruments": [
+			{
+				"id": "eq-1",
+				"name": "iShares Core MSCI World UCITS ETF",
+				"isin": "IE00B4L5Y983",
+				"quantity": 1250,
+				"price": 89.45,
+				"currency": "USD",
+				"amount": 111812.50,
+				"weight": 22.5
+			},
+			{
+				"id": "eq-2",
+				"name": "Vanguard S&P 500 ETF",
+				"isin": "IE00B3XXRP09",
+				"quantity": 850,
+				"price": 78.32,
+				"currency": "USD",
+				"amount": 66572.00,
+				"weight": 13.4
+			},
+			{
+				"id": "eq-3",
+				"name": "iShares MSCI Emerging Markets ETF",
+				"isin": "IE00B4L5YC18",
+				"quantity": 420,
+				"price": 42.18,
+				"currency": "USD",
+				"amount": 17715.60,
+				"weight": 3.6
+			}
+		]
+	},
+	{
+		"id": "fixed-income",
+		"name": "Fixed Income",
+		"minAllocation": 20,
+		"maxAllocation": 40,
+		"isExpanded": true,
+		"instruments": [
+			{
+				"id": "fi-1",
+				"name": "iShares Core Global Aggregate Bond UCITS ETF",
+				"isin": "IE00BDBRDM35",
+				"quantity": 2100,
+				"price": 4.52,
+				"currency": "EUR",
+				"amount": 9492.00,
+				"weight": 1.9
+			},
+			{
+				"id": "fi-2",
+				"name": "Vanguard EUR Corporate Bond ETF",
+				"isin": "IE00BZ163G84",
+				"quantity": 1800,
+				"price": 48.75,
+				"currency": "EUR",
+				"amount": 87750.00,
+				"weight": 17.7
+			}
+		]
+	},
+	{
+		"id": "alternatives",
+		"name": "Alternatives",
+		"minAllocation": 5,
+		"maxAllocation": 20,
+		"isExpanded": true,
+		"instruments": [
+			{
+				"id": "alt-1",
+				"name": "Invesco Physical Gold ETC",
+				"isin": "IE00B579F325",
+				"quantity": 320,
+				"price": 185.40,
+				"currency": "USD",
+				"amount": 59328.00,
+				"weight": 12.0
+			},
+			{
+				"id": "alt-2",
+				"name": "iShares Developed Markets Property Yield ETF",
+				"isin": "IE00B1FZS350",
+				"quantity": 680,
+				"price": 22.85,
+				"currency": "EUR",
+				"amount": 15538.00,
+				"weight": 3.1
+			}
+		]
+	},
+	{
+		"id": "cash",
+		"name": "Cash & Equivalents",
+		"minAllocation": 2,
+		"maxAllocation": 10,
+		"isExpanded": true,
+		"instruments": [
+			{
+				"id": "cash-1",
+				"name": "Money Market Fund EUR",
+				"isin": "LU0290358497",
+				"quantity": 125000,
+				"price": 1.00,
+				"currency": "EUR",
+				"amount": 125000.00,
+				"weight": 25.2
+			}
+		]
+	}
+]

@@ -589,29 +589,63 @@ class ValuationPDFParser:
     # ── Transactions ───────────────────────────────────────────────────
 
     def _extract_transactions(self) -> list[Transaction]:
+        """
+        Extract transactions from the statement.
+
+        Looks for sections with transaction keywords and parses date-based entries.
+        Handles multiple formats and currencies.
+        """
         items = []
+
+        # Keywords that indicate a transactions section (case-insensitive)
+        transaction_keywords = [
+            "TRANSACTIONS", "TRANSACTION HISTORY", "MOUVEMENTS",
+            "OPERATIONS", "HISTORIQUE", "ACTIVITY"
+        ]
+
         for text in self.page_texts:
-            if "TRANSACTIONS" not in text:
+            # Check if this page contains a transactions section
+            text_upper = text.upper()
+            has_transactions = any(keyword in text_upper for keyword in transaction_keywords)
+
+            if not has_transactions:
                 continue
+
             # Pattern: date instrument operation amount price ccy value
+            # Support multiple operation types and currencies
             lines = text.split("\n")
             for line in lines:
+                # More flexible regex - support various operation types
                 m = re.match(
                     r"(\d{2}/\d{2}/\d{4})\s+(.+?)\s+"
-                    r"(Buy|Sell|Subscription funds|Redemption)\s+"
-                    r"([\d',.]+)\s+([\d',.]+)\s+(CHF|USD|EUR)\s+([-\d',.]+)",
+                    r"(Buy|Sell|Subscription|Redemption|Purchase|Sale|Achat|Vente|"
+                    r"Subscription funds|Redemption funds)\s+"
+                    r"([\d',.]+)\s+([\d',.]+)\s+"
+                    r"(CHF|USD|EUR|GBP|JPY|CAD|AUD|SEK|NOK|DKK|SGD|HKD)\s+"
+                    r"([-\d',.]+)",
                     line.strip(),
+                    re.IGNORECASE
                 )
                 if m:
+                    # Normalize operation type
+                    operation = m.group(3).strip()
+                    if operation.lower() in ["buy", "purchase", "achat", "subscription", "subscription funds"]:
+                        operation_type = "Buy"
+                    elif operation.lower() in ["sell", "sale", "vente", "redemption", "redemption funds"]:
+                        operation_type = "Sell"
+                    else:
+                        operation_type = operation
+
                     items.append(Transaction(
                         date=m.group(1),
                         instrument=m.group(2).strip(),
-                        operation_type=m.group(3),
+                        operation_type=operation_type,
                         amount=_parse_number(m.group(4)),
                         price=_parse_number(m.group(5)),
-                        settlement_ccy=m.group(6),
+                        settlement_ccy=m.group(6).upper(),
                         op_value=_parse_number(m.group(7)),
                     ))
+
         return items
 
     # ── Risk Analysis ──────────────────────────────────────────────────
