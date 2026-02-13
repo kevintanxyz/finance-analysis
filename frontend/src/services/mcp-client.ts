@@ -70,7 +70,7 @@ class MCPClient {
    */
   async ping(): Promise<boolean> {
     try {
-      const response = await this.client.get("/");
+      const response = await this.client.get("/api/health");
       return response.status === 200;
     } catch {
       return false;

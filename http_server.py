@@ -10,6 +10,7 @@ Architecture:
 from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import base64
 import sys
@@ -172,8 +173,8 @@ def get_user_friendly_status(tool_name: str) -> str:
     )
 
 
-@app.get("/")
-async def root():
+@app.get("/api/health")
+async def health():
     return {"message": "WealthPoint MCP HTTP API", "status": "running"}
 
 
@@ -1065,6 +1066,18 @@ async def upload_pdf(file: UploadFile = File(...)):
         import traceback
         traceback.print_exc()
         return {"result": None, "error": str(e)}
+
+
+# Serve frontend static files (React build)
+# This must be AFTER all API routes to avoid conflicts
+frontend_dist = os.path.join(os.path.dirname(__file__), "frontend", "dist")
+if os.path.exists(frontend_dist):
+    # Mount static files - html=True serves index.html for all unmatched routes (SPA)
+    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
+    print(f"✅ Frontend static files mounted from: {frontend_dist}", file=sys.stderr)
+else:
+    print(f"⚠️  Frontend build not found at: {frontend_dist}", file=sys.stderr)
+    print("   Run 'cd frontend && npm run build' to build the frontend", file=sys.stderr)
 
 
 if __name__ == "__main__":
